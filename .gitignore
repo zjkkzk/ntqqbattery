@@ -1,0 +1,7 @@
+build/
+.kotlin/
+.gradle/
+*.jks
+local.properties
+*.log
+.ai_memory/

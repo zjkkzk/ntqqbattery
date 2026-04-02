@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">NTQQBattery</string>
+    <string name="module_active">模块已激活</string>
+    <string name="module_inactive">模块未激活 (请在 LSPosed 中勾选并重启 QQ)</string>
+    <string name="block_system_wake_lock">屏蔽系统级唤醒锁 (WakeLock)</string>
+    <string name="block_qq_battery_monitor">屏蔽 QQ 自带耗电监控 (锁定日志以降 FD)</string>
+    <string name="block_core_service">禁止 CoreService 前台常驻</string>
+    <string name="block_lock_screen_keep_alive">禁用锁屏全屏活动 (保持息屏)</string>
+    <string name="block_mini_app_preload">禁用小程序后台预加载</string>
+    <string name="block_mini_game_preload">禁用小游戏闪屏/进程预加载</string>
+    <string name="block_splash_preload">禁用首页 UI / 会话预加载</string>
+    <string name="block_zplan_ue_render">[UI层] 隐藏超级QQ秀界面 (防止弹出)</string>
+    <string name="block_theme_video">禁用主题视频初始化与动画</string>
+    <string name="block_gpu_resources">[底层] 彻底拦截渲染引擎 (UE4/Apollo/省电必开)</string>
+    <string name="block_heavy_background_service">禁用高占用后台服务</string>
+    <string name="enable_tombstone_mode">启用墓碑模式</string>
+    <string name="enable_tombstone_mode_summary">应用进入后台30秒后强制释放资源并进入深度休眠</string>
+    <string name="suppress_network_request">抑制频繁网络请求</string>
+    <string name="suppress_network_request_summary">延长后台心跳间隔并过滤冗余配置拉取</string>
+    <string name="force_power_save_mode">强制省电模式 (诱导 MSF 流控)</string>
+    <string name="first_build_note">本模块专注于 NTQQ 源码级别的省电优化方案。</string>
+    <string name="module_settings">NTQQBattery 模块设置</string>
+    <string name="category_core">核心拦截</string>
+    <string name="category_component">组件精简</string>
+    <string name="category_optimization">优化与系统</string>
+    <string name="block_background_vibrate">拦截后台振动</string>
+    <string name="optimize_msf_strategy">优化 MSF 内部策略 (核心频率与线程过滤)</string>
+    <string name="aggressive_msf_optimization">激进 MSF 优化 (压制 Ping/Watchdog)</string>
+    <string name="block_beacon">屏蔽 Beacon 行为上报</string>
+    <string name="block_tvk_report">屏蔽 TVK 视频统计上报</string>
+    <string name="block_gif_optimization">优化 GIF 渲染与防御</string>
+</resources>
+

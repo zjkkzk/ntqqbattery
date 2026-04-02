@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">NTQQBattery</string>
+    <string name="module_active">Module is active.</string>
+    <string name="module_inactive">Module is not active yet.</string>
+    <string name="block_system_wake_lock">Block system WakeLock acquire/release</string>
+    <string name="block_qq_battery_monitor">Block NTQQ battery monitor (Lock log level to reduce FD)</string>
+    <string name="block_core_service">Block CoreService foreground keep-alive</string>
+    <string name="block_upload_wake_lock">Block upload service WakeLock</string>
+    <string name="block_lock_screen_keep_alive">Close lock-screen keep-alive activity</string>
+    <string name="block_mini_app_preload">Block MiniApp preload</string>
+    <string name="block_mini_game_preload">Block MiniGame splash/process preload</string>
+    <string name="block_splash_preload">Block SplashActivity UI preload</string>
+    <string name="block_zplan_ue_render">[UI] Hide SuperQQShow UI (Prevent popup)</string>
+    <string name="block_argus_preload">Block Argus layout/view preload</string>
+    <string name="block_theme_video">Block theme video init and animation</string>
+    <string name="block_gpu_resources">[Core] Heavy Engine Suppression (UE4/Apollo/Deep Save)</string>
+    <string name="block_heavy_background_service">Block heavy background services</string>
+    <string name="enable_tombstone_mode">Enable background tombstone (Suspend app)</string>
+    <string name="enable_tombstone_mode_summary">Release resources and enter deep sleep after 30s in background</string>
+    <string name="suppress_network_request">Suppress frequent network requests</string>
+    <string name="suppress_network_request_summary">Extend heart interval and filter routine config pulls</string>
+    <string name="force_power_save_mode">Force PowerSaveMode (Trick MSF)</string>
+    <string name="module_settings">NTQQBattery Settings</string>
+    <string name="first_build_note">This module focuses on NTQQ-only battery saving hooks.</string>
+    <string name="category_core">Core Interception</string>
+    <string name="category_component">Component Trimming</string>
+    <string name="category_optimization">Optimization &amp; System</string>
+    <string name="optimize_msf_strategy">Optimize MSF internal strategy (WakeLock/Interval/Threads)</string>
+    <string name="aggressive_msf_optimization">Aggressive MSF Optimization (Alarm/SimpleGet/Watchdog)</string>
+    <string name="block_background_vibrate">Block background vibration</string>
+    <string name="block_beacon">Block Beacon behavior reporting</string>
+    <string name="block_tvk_report">Block TVK video statistics reporting</string>
+    <string name="block_gif_optimization">Optimize GIF rendering &amp; defense</string>
+</resources>
