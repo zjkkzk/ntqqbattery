@@ -26,7 +26,7 @@
 - 拦截后台振动
 - 拦截 Beacon 行为上报
 - 拦截 TVK 视频统计上报
-- 优化 GIF 渲染行为
+- 优化 GIF 渲染行为，防止恶意 GIF
 
 ## 适用范围
 
@@ -68,27 +68,6 @@
 ```bash
 cd NTQQBattery
 ./gradlew :app:assembleDebug
-```
-
-构建 Release 版本：
-
-```bash
-cd NTQQBattery
-./gradlew :app:assembleRelease
-```
-
-如果需要签名 Release 包，请在 `local.properties` 中配置：
-
-```properties
-signing.storePassword=...
-signing.keyAlias=...
-signing.keyPassword=...
-```
-
-默认签名文件路径为：
-
-```text
-app/release.jks
 ```
 
 ## 技术栈
