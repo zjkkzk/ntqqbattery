@@ -73,52 +73,65 @@ object HeavyBackgroundServiceHook : YukiBaseHooker() {
         listOf(
             "com.tencent.mobileqq.music.QQPlayerService",
             "com.tencent.mobileqq.winkpublish.service.WinkPublishService",
+            // "com.tencent.mobileqq.colornote.smallscreen.ColorNoteSmallScreenService",
             "com.tencent.gamecenter.wadl.api.impl.WadlProxyService",
             "com.tencent.gamecenter.wadl.biz.service.WadlJsBridgeService",
             "com.tencent.gamecenter.wadl.notification.WadlNotificationService",
-            "com.tencent.mobileqq.gamecenter.yungame.YunGameService"
+            "com.tencent.mobileqq.gamecenter.yungame.YunGameService",
+            // "com.tencent.luggage.login.ilink2service.Ilink2Service"
         ).forEach { className ->
             className.toClassOrNull()?.apply {
-                method { name = "onCreate" }.hook().after {
-                    if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                        YLog.debug("Prevented ${className.substringAfterLast('.')}.onCreate in background, executing stopSelf()")
-                        (instance as? Service)?.stopSelf()
+                runCatching {
+                    method { name = "onCreate" }.hook().after {
+                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                            YLog.debug("Prevented ${className.substringAfterLast('.')}.onCreate in background, executing stopSelf()")
+                            (instance as? Service)?.stopSelf()
+                        }
                     }
                 }
 
                 if (className.endsWith("QQPlayerService")) {
-                    method { name = "a0" }.hook().before {
-                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                            YLog.debug("Blocked QQPlayerService.a0() (MediaPlayer init) in background")
-                            result = NTQQHooker.safeReturn(method)
+                    runCatching {
+                        method { name = "a0" }.hook().before {
+                            if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                                YLog.debug("Blocked QQPlayerService.a0() (MediaPlayer init) in background")
+                                result = NTQQHooker.safeReturn(method)
+                            }
                         }
                     }
 
-                    method { name = "b0" }.hook().before {
-                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                            YLog.debug("Blocked QQPlayerService.b0() (HandlerThread init) in background")
-                            result = NTQQHooker.safeReturn(method)
+                    runCatching {
+                        method { name = "b0" }.hook().before {
+                            if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                                YLog.debug("Blocked QQPlayerService.b0() (HandlerThread init) in background")
+                                result = NTQQHooker.safeReturn(method)
+                            }
                         }
                     }
                 }
 
-                method { name = "onBind" }.hookAll().before {
-                    if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                        YLog.debug("Blocked ${className.substringAfterLast('.')}.onBind")
-                        result = null
+                runCatching {
+                    method { name = "onBind" }.hookAll().before {
+                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                            YLog.debug("Blocked ${className.substringAfterLast('.')}.onBind")
+                            (instance as? Service)?.stopSelf()
+                            result = null
+                        }
                     }
                 }
 
-                method { name = "onStartCommand" }.hookAll().before {
-                    val intent = args.firstOrNull() as? Intent
-                    val action = intent?.getIntExtra("musicplayer.action", 0) ?: 0
+                runCatching {
+                    method { name = "onStartCommand" }.hookAll().before {
+                        val intent = args.firstOrNull() as? Intent
+                        val action = intent?.getIntExtra("musicplayer.action", 0) ?: 0
 
-                    if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                        if (action == 3 || action == 6) return@before
+                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                            if (action == 3 || action == 6) return@before
 
-                        YLog.debug("Blocked ${className.substringAfterLast('.')}.onStartCommand with action=$action in background")
-                        result = Service.START_NOT_STICKY
-                        (instance as? Service)?.stopSelf()
+                            YLog.debug("Blocked ${className.substringAfterLast('.')}.onStartCommand with action=$action in background")
+                            result = Service.START_NOT_STICKY
+                            (instance as? Service)?.stopSelf()
+                        }
                     }
                 }
             }

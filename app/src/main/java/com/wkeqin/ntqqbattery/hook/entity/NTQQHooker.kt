@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 object NTQQHooker : YukiBaseHooker() {
     private const val ACTION_BG_SYNC = "com.wkeqin.ntqqbattery.ACTION_BG_SYNC"
+    private const val TOMBSTONE_DELAY_MS = 30_000L
 
     internal val activeActivities = AtomicInteger(0)
     @Volatile internal var isAppInBackground = false
@@ -35,6 +36,10 @@ object NTQQHooker : YukiBaseHooker() {
     internal var isEarlyHooked = false
     internal var isLifecycleRegistered = false
     @Volatile private var isReceiverRegistered = false
+    private val tombstoneExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "ntqqbattery-tombstone").apply { isDaemon = true }
+    }
+    @Volatile private var tombstoneFuture: ScheduledFuture<*>? = null
 
     /**
      * 安全返回：防止拦截时返回类型不匹配导致的崩溃
@@ -77,10 +82,12 @@ object NTQQHooker : YukiBaseHooker() {
         
         return className.endsWith("QQPlayerService") ||
             className.endsWith("WinkPublishService") ||
+            className.endsWith("ColorNoteSmallScreenService") ||
             className.endsWith("WadlProxyService") ||
             className.endsWith("WadlJsBridgeService") ||
             className.endsWith("WadlNotificationService") ||
-            className.endsWith("YunGameService")
+            className.endsWith("YunGameService") ||
+            className.endsWith("Ilink2Service")
     }
 
     internal fun shouldBlockAlarm(operation: PendingIntent?): Boolean {
@@ -134,11 +141,15 @@ object NTQQHooker : YukiBaseHooker() {
         YLog.info("Sync background state in $processName -> isBg=$isBg, active=${activeActivities.get()}")
         if (isBg) {
             stopCoreServices()
+            stopMsfServices(context)
             stopGameServices(context)
             stopQQPlayerService(context)
+            stopAuxiliaryServices(context)
             releaseThemeVideoController()
             suspendBeaconTasks(true)
+            scheduleTombstone(context)
         } else {
+            cancelTombstone()
             suspendBeaconTasks(false)
         }
         context.sendBroadcast(Intent(ACTION_BG_SYNC).apply {
@@ -146,6 +157,41 @@ object NTQQHooker : YukiBaseHooker() {
             putExtra("sender_pkg", context.packageName)
             setPackage(context.packageName)
         })
+    }
+
+    private fun scheduleTombstone(context: Context) {
+        if (processName != mainProcessName) return
+        if (!ConfigData.isEnabled(FeatureRegistry.enableTombstoneMode)) return
+        cancelTombstone()
+        val appContext = context.applicationContext
+        tombstoneFuture = tombstoneExecutor.schedule({
+            if (!isAppInBackground) return@schedule
+            runCatching {
+                enterTombstoneMode(appContext)
+            }.onFailure {
+                YLog.error("Failed to enter tombstone mode: ${it.message}")
+            }
+        }, TOMBSTONE_DELAY_MS, TimeUnit.MILLISECONDS)
+        YLog.info("Scheduled tombstone mode in ${TOMBSTONE_DELAY_MS}ms")
+    }
+
+    private fun cancelTombstone() {
+        tombstoneFuture?.cancel(false)
+        tombstoneFuture = null
+    }
+
+    private fun enterTombstoneMode(context: Context) {
+        if (!ConfigData.isEnabled(FeatureRegistry.enableTombstoneMode)) return
+        if (!isAppInBackground) return
+
+        YLog.info("Entering tombstone mode in $processName")
+        stopCoreServices()
+        stopMsfServices(context)
+        stopGameServices(context)
+        stopQQPlayerService(context)
+        stopAuxiliaryServices(context)
+        releaseThemeVideoController()
+        suspendBeaconTasks(true)
     }
 
     private fun suspendBeaconTasks(suspend: Boolean) {
@@ -210,6 +256,41 @@ object NTQQHooker : YukiBaseHooker() {
             "com.tencent.gamecenter.wadl.biz.service.WadlJsBridgeService",
             "com.tencent.gamecenter.wadl.notification.WadlNotificationService",
             "com.tencent.mobileqq.gamecenter.yungame.YunGameService"
+        ).forEach { className ->
+            runCatching {
+                val clazz = className.toClassOrNull(appClassLoader, false) ?: return@runCatching
+                val stopped = context.stopService(Intent(context, clazz))
+                YLog.debug("Requested stop for ${className.substringAfterLast('.')} on background transition, stopped=$stopped")
+            }.onFailure {
+                YLog.error("Failed to request stop for ${className.substringAfterLast('.')}: ${it.message}")
+            }
+        }
+    }
+
+    private fun stopAuxiliaryServices(context: Context) {
+        if (!ConfigData.isEnabled(FeatureRegistry.blockHeavyBackgroundService)) return
+
+        listOf(
+            "com.tencent.mobileqq.winkpublish.service.WinkPublishService",
+            "com.tencent.mobileqq.colornote.smallscreen.ColorNoteSmallScreenService",
+            "com.tencent.luggage.login.ilink2service.Ilink2Service"
+        ).forEach { className ->
+            runCatching {
+                val clazz = className.toClassOrNull(appClassLoader, false) ?: return@runCatching
+                val stopped = context.stopService(Intent(context, clazz))
+                YLog.debug("Requested stop for ${className.substringAfterLast('.')} on background transition, stopped=$stopped")
+            }.onFailure {
+                YLog.error("Failed to request stop for ${className.substringAfterLast('.')}: ${it.message}")
+            }
+        }
+    }
+
+    private fun stopMsfServices(context: Context) {
+        if (!ConfigData.isEnabled(FeatureRegistry.aggressiveMsfOptimization)) return
+
+        listOf(
+            "com.tencent.mobileqq.msf.service.MsfService",
+            "com.tencent.mobileqq.msf.service.MsfCoreService"
         ).forEach { className ->
             runCatching {
                 val clazz = className.toClassOrNull(appClassLoader, false) ?: return@runCatching

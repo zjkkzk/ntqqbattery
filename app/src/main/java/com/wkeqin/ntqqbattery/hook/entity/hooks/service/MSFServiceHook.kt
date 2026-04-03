@@ -1,5 +1,6 @@
 package com.wkeqin.ntqqbattery.hook.entity.hooks.service
 
+import android.app.Service
 import android.content.Intent
 import com.wkeqin.ntqqbattery.data.ConfigData
 import com.wkeqin.ntqqbattery.hook.entity.FeatureRegistry
@@ -41,6 +42,33 @@ object MSFServiceHook : YukiBaseHooker() {
             if (NTQQHooker.isBackground()) {
                 YLog.debug("Blocked MSFAliveManager job registration")
                 result = NTQQHooker.safeReturn(method)
+            }
+        }
+
+        listOf(
+            "com.tencent.mobileqq.msf.service.MsfService",
+            "com.tencent.mobileqq.msf.service.MsfCoreService"
+        ).forEach { className ->
+            className.toClassOrNull()?.apply {
+                runCatching {
+                    method { name = "onBind" }.hookAll().before {
+                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                            YLog.debug("Blocked ${className.substringAfterLast('.')}.onBind in background")
+                            (instance as? Service)?.stopSelf()
+                            result = null
+                        }
+                    }
+                }
+
+                runCatching {
+                    method { name = "onStartCommand" }.hookAll().before {
+                        if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                            YLog.debug("Blocked ${className.substringAfterLast('.')}.onStartCommand in background")
+                            result = Service.START_NOT_STICKY
+                            (instance as? Service)?.stopSelf()
+                        }
+                    }
+                }
             }
         }
     }

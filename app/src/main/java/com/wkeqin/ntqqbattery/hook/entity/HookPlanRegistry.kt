@@ -13,6 +13,7 @@ import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.GPUResourceHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFNetworkSuppressionHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFOptimizationHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.PandoraExHook
+import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.PerfMonitorHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.PowerSaveModeHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.QLogHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.StatisticCollectorHook
@@ -50,6 +51,7 @@ object HookPlanRegistry {
         GPUResourceHook.plan,
         MSFOptimizationHook.plan,
         PandoraExHook.plan,
+        PerfMonitorHook.plan,
         MSFNetworkSuppressionHook.plan,
         QLogHook.plan,
         PowerSaveModeHook.plan,

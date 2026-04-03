@@ -155,7 +155,7 @@ object GifOptimizationHook : YukiBaseHooker() {
                 }
                 after {
                     val delay = result as? Long ?: return@after
-                    if (delay in 0..20) result = 100L
+                    if (delay in 0..16) result = 17L
                 }
             }
         }
