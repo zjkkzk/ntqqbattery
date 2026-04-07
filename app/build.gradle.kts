@@ -9,6 +9,7 @@ plugins {
 android {
     namespace = "com.wkeqin.ntqqbattery"
     compileSdk = 36
+    androidResources.additionalParameters += listOf("--allow-reserved-package-id", "--package-id", "0x64")
 
     defaultConfig {
         applicationId = "com.wkeqin.ntqqbattery"

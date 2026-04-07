@@ -33,19 +33,29 @@
 
         <activity
             android:name=".ui.activity.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.NTQQBattery">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.activity.QQSettingsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NTQQBattery" />
+
+        <activity
+            android:name=".ui.activity.AppHomeActivity"
+            android:exported="true" />
+
         <activity-alias
             android:name=".Home"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name"
-            android:targetActivity=".ui.activity.MainActivity">
+            android:targetActivity=".ui.activity.AppHomeActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

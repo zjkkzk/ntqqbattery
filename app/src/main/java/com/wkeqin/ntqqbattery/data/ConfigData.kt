@@ -1,34 +1,60 @@
 package com.wkeqin.ntqqbattery.data
 
 import android.content.Context
+import android.content.SharedPreferences
+import com.wkeqin.ntqqbattery.BuildConfig
 import com.wkeqin.ntqqbattery.hook.entity.FeatureDefinition
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 
 object ConfigData {
 
-    private const val PREFS_NAME = "ntqqbattery_config"
+    private const val SHARED_PREFS_NAME = "ntqqbattery_config"
+    private const val RUNTIME_PREFS_NAME = "ntqqbattery_runtime"
     const val FEATURE_CACHE_VERSION = "feature_cache_version"
 
     // Hook 状态追踪 (后缀 _status)
     private fun getStatusKey(configKey: String) = "${configKey}_status"
 
-    private var prefs: YukiHookPrefsBridge? = null
+    private var sharedPrefs: YukiHookPrefsBridge? = null
+    private var featurePrefs: YukiHookPrefsBridge? = null
+    private var sharedWritablePrefs: SharedPreferences? = null
+    private var runtimePrefs: YukiHookPrefsBridge? = null
 
     fun init(context: Context) {
-        prefs = context.prefs(name = PREFS_NAME).native()
+        // 桥接配置用于兼容模块进程读取。
+        sharedPrefs = context.prefs(name = SHARED_PREFS_NAME)
+        // 当前进程内的功能开关统一走 native，保证寄生活动与 Hook 读写同一份配置。
+        featurePrefs = context.prefs(name = SHARED_PREFS_NAME).native()
+        sharedWritablePrefs = resolveModulePrefs(context, SHARED_PREFS_NAME)
+
+        // 运行时缓存/状态只在当前进程使用，继续走 native。
+        runtimePrefs = context.prefs(name = RUNTIME_PREFS_NAME).native()
     }
 
-    private fun getBoolean(key: String, defValue: Boolean) = prefs?.getBoolean(key, defValue) ?: defValue
+    private fun resolveModulePrefs(context: Context, name: String): SharedPreferences? {
+        val moduleContext = runCatching {
+            context.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY)
+        }.getOrNull() ?: context
+        return runCatching {
+            moduleContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+        }.getOrNull()
+    }
+
+    private fun getBoolean(key: String, defValue: Boolean): Boolean {
+        featurePrefs?.takeIf { it.contains(key) }?.let { return it.getBoolean(key, defValue) }
+        return sharedPrefs?.getBoolean(key, defValue) ?: defValue
+    }
 
     private fun putBoolean(key: String, value: Boolean) {
-        prefs?.edit { putBoolean(key, value) }
+        featurePrefs?.edit { putBoolean(key, value) }
+        sharedWritablePrefs?.edit()?.putBoolean(key, value)?.apply()
     }
 
-    fun getString(key: String, defValue: String = "") = prefs?.getString(key, defValue) ?: defValue
+    fun getString(key: String, defValue: String = "") = runtimePrefs?.getString(key, defValue) ?: defValue
 
     fun putString(key: String, value: String) {
-        prefs?.edit { putString(key, value) }
+        runtimePrefs?.edit { putString(key, value) }
     }
 
     // 状态读写接口
@@ -38,9 +64,9 @@ object ConfigData {
         putBoolean(feature.key, value)
     }
 
-    fun isHooked(feature: FeatureDefinition) = getBoolean(getStatusKey(feature.key), false)
+    fun isHooked(feature: FeatureDefinition) = runtimePrefs?.getBoolean(getStatusKey(feature.key), false) ?: false
 
     fun setHooked(feature: FeatureDefinition, value: Boolean) {
-        putBoolean(getStatusKey(feature.key), value)
+        runtimePrefs?.edit { putBoolean(getStatusKey(feature.key), value) }
     }
 }

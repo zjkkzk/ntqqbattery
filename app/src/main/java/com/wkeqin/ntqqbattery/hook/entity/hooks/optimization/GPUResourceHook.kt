@@ -12,6 +12,7 @@ import com.wkeqin.ntqqbattery.hook.entity.NTQQHooker
 import com.wkeqin.ntqqbattery.hook.entity.features.PerfFeatures
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.*
+import com.highcapable.yukihookapi.hook.log.YLog
 
 object GPUResourceHook : YukiBaseHooker() {
 
@@ -33,13 +34,39 @@ object GPUResourceHook : YukiBaseHooker() {
     override fun onHook() {
         if (!ConfigData.isEnabled(FeatureRegistry.blockGPUResources)) return
 
-        PerfFeatures.GLThreadManagerClass?.apply {
-            runCatching {
-                method { name = "init"; param(Context::class.java) }.hook().before {
+        val glThreadManagerClass = PerfFeatures.GLThreadManagerClass ?: return
+        val hookInstalled = runCatching {
+            glThreadManagerClass.installGpuBlockHook()
+        }.getOrElse {
+            YLog.error("GPUResourceHook: failed to install hook: ${it.message}")
+            false
+        }
+
+        if (hookInstalled) {
+            ConfigData.setHooked(FeatureRegistry.blockGPUResources, true)
+        } else {
+            YLog.debug("GPUResourceHook: no compatible GLThreadManager entry point found, skipped.")
+        }
+    }
+
+    private fun Class<*>.installGpuBlockHook(): Boolean {
+        val candidates = listOf("e", "c", "init")
+        for (candidate in candidates) {
+            val hooked = runCatching {
+                method {
+                    name = candidate
+                    param(Context::class.java)
+                }.hook().before {
+                    YLog.debug("GPUResourceHook: blocked GLThreadManager.${method.name}(Context)")
                     result = NTQQHooker.safeReturn(method)
                 }
+                true
+            }.getOrElse {
+                YLog.debug("GPUResourceHook: ${this.name}.$candidate(Context) not found")
+                false
             }
+            if (hooked) return true
         }
-        ConfigData.setHooked(FeatureRegistry.blockGPUResources, true)
+        return false
     }
 }

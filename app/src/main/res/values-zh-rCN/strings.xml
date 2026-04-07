@@ -20,6 +20,7 @@
     <string name="force_power_save_mode">强制省电模式 (诱导 MSF 流控)</string>
     <string name="first_build_note">本模块专注于 NTQQ 源码级别的省电优化方案。</string>
     <string name="module_settings">NTQQBattery 模块设置</string>
+    <string name="app_config_redirect">功能开关现已统一放到 QQ 内配置。请打开 QQ 设置中的 NTQQBattery 入口进行调整。</string>
     <string name="category_core">核心拦截</string>
     <string name="category_component">组件精简</string>
     <string name="category_optimization">优化与系统</string>

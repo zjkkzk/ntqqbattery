@@ -22,6 +22,7 @@
     <string name="force_power_save_mode">Force PowerSaveMode (Trick MSF)</string>
     <string name="module_settings">NTQQBattery Settings</string>
     <string name="first_build_note">This module focuses on NTQQ-only battery saving hooks.</string>
+    <string name="app_config_redirect">Feature switches are managed inside QQ now. Open QQ Settings and enter the NTQQBattery entry to configure behavior.</string>
     <string name="category_core">Core Interception</string>
     <string name="category_component">Component Trimming</string>
     <string name="category_optimization">Optimization &amp; System</string>
