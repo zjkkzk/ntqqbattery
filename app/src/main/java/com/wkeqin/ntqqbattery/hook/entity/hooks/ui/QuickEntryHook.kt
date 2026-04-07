@@ -36,7 +36,6 @@ object QuickEntryHook : YukiBaseHooker() {
         val hostContext = context ?: return
         runCatching {
             hostContext.registerModuleAppActivities(proxy = BaseHostActivity.FALLBACK_PROXY_ACTIVITY)
-            YLog.info("QuickEntryHook: registered module activity proxy -> ${BaseHostActivity.FALLBACK_PROXY_ACTIVITY}")
         }.onFailure {
             YLog.error("QuickEntryHook: failed to register module activity proxy: ${it.message}")
         }
@@ -65,7 +64,6 @@ object QuickEntryHook : YukiBaseHooker() {
             }
 
             if (oldMethod == null && newMethod == null && newObfMethod == null) {
-                YLog.debug("QuickEntryHook: no settings provider method found.")
                 return@runCatching
             }
 
@@ -103,7 +101,6 @@ object QuickEntryHook : YukiBaseHooker() {
             oldMethod?.let { XposedBridge.hookMethod(it, callback) }
             newMethod?.let { XposedBridge.hookMethod(it, callback) }
             newObfMethod?.let { XposedBridge.hookMethod(it, callback) }
-            YLog.info("QuickEntryHook: settings provider hooks installed.")
         }.onFailure {
             YLog.error("QuickEntryHook provider hook failed: ${it.message}")
         }
@@ -133,7 +130,6 @@ object QuickEntryHook : YukiBaseHooker() {
                     val providerClassName = param.thisObject.javaClass.name
                     val indexToInsert = if (providerClassName.contains("NewSettingConfigProvider") || providerClassName == "com.tencent.mobileqq.setting.main.b") 2 else 1
                     result.add(indexToInsert.coerceAtMost(result.size), group)
-                    YLog.debug("QuickEntryHook: injected settings entry into $providerClassName")
                 }.onFailure {
                     YLog.error("QuickEntryHook inject failed: ${it.message}")
                 }
@@ -184,7 +180,6 @@ object QuickEntryHook : YukiBaseHooker() {
             arrayOf(function0Class)
         ) { _, method, _ ->
             if (method.name == "invoke") {
-                YLog.info("QuickEntryHook: settings entry clicked")
                 runCatching {
                     val activity = context as? Activity
                         ?: error("QuickEntryHook: context is not an Activity: ${context.javaClass.name}")
@@ -201,7 +196,6 @@ object QuickEntryHook : YukiBaseHooker() {
             runCatching {
                 method.isAccessible = true
                 method.invoke(entryItem, clickCallback)
-                YLog.debug("QuickEntryHook: bound click callback via ${method.name}")
             }.onFailure {
                 YLog.error("QuickEntryHook: failed to bind ${method.name}: ${it.message}")
             }

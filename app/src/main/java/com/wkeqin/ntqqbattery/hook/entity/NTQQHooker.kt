@@ -61,7 +61,9 @@ object NTQQHooker : YukiBaseHooker() {
     }
 
     fun isBackground(): Boolean {
-        if (processName != mainProcessName && !hasSyncedBackgroundState) return true
+        // 子进程刚拉起时，主进程状态同步可能尚未到达。
+        // 这里保守按“非后台”处理，避免 MSF 等关键进程在启动期被误杀。
+        if (processName != mainProcessName && !hasSyncedBackgroundState) return false
         return isAppInBackground
     }
 
@@ -287,19 +289,7 @@ object NTQQHooker : YukiBaseHooker() {
 
     private fun stopMsfServices(context: Context) {
         if (!ConfigData.isEnabled(FeatureRegistry.aggressiveMsfOptimization)) return
-
-        listOf(
-            "com.tencent.mobileqq.msf.service.MsfService",
-            "com.tencent.mobileqq.msf.service.MsfCoreService"
-        ).forEach { className ->
-            runCatching {
-                val clazz = className.toClassOrNull(appClassLoader, false) ?: return@runCatching
-                val stopped = context.stopService(Intent(context, clazz))
-                YLog.debug("Requested stop for ${className.substringAfterLast('.')} on background transition, stopped=$stopped")
-            }.onFailure {
-                YLog.error("Failed to request stop for ${className.substringAfterLast('.')}: ${it.message}")
-            }
-        }
+        // MsfService/MsfCoreService 负责消息收发，不在后台切换时主动 stop。
     }
 
     internal fun stopCoreServices() {

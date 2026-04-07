@@ -27,7 +27,7 @@
     <string name="category_component">Component Trimming</string>
     <string name="category_optimization">Optimization &amp; System</string>
     <string name="optimize_msf_strategy">Optimize MSF internal strategy (WakeLock/Interval/Threads)</string>
-    <string name="aggressive_msf_optimization">Aggressive MSF Optimization (Alarm/SimpleGet/Watchdog)</string>
+    <string name="aggressive_msf_optimization">Background MSF Throttle (Alarm/Watchdog Delay)</string>
     <string name="block_background_vibrate">Block background vibration</string>
     <string name="block_beacon">Block Beacon behavior reporting</string>
     <string name="block_tvk_report">Block TVK video statistics reporting</string>

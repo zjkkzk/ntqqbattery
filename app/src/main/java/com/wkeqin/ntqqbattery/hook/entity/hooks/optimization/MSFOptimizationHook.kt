@@ -60,6 +60,7 @@ object MSFOptimizationHook : YukiBaseHooker() {
                 method { name { it in setOf("K", "L", "O", "M") }; emptyParam() }.hookAll().before {
                     when (method.name) {
                         "K", "L" -> result = 60000
+                        // 激进开关现在只表示“后台进一步降频”，不再触碰 MSF 服务主链。
                         "O", "M" -> if (ConfigData.isEnabled(FeatureRegistry.aggressiveMsfOptimization)) result = 1800000
                     }
                 }
@@ -78,7 +79,7 @@ object MSFOptimizationHook : YukiBaseHooker() {
                 name = "onStartJob"
                 paramCount = 1
             }.hook().before {
-                if (NTQQHooker.isBackgroundRestrictedProcess()) {
+                if (NTQQHooker.isBackground()) {
                     YLog.debug("Blocked MSFAliveJobService.onStartJob")
                     result = false
                 }

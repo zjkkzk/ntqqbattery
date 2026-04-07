@@ -44,8 +44,6 @@ object GPUResourceHook : YukiBaseHooker() {
 
         if (hookInstalled) {
             ConfigData.setHooked(FeatureRegistry.blockGPUResources, true)
-        } else {
-            YLog.debug("GPUResourceHook: no compatible GLThreadManager entry point found, skipped.")
         }
     }
 
@@ -57,12 +55,10 @@ object GPUResourceHook : YukiBaseHooker() {
                     name = candidate
                     param(Context::class.java)
                 }.hook().before {
-                    YLog.debug("GPUResourceHook: blocked GLThreadManager.${method.name}(Context)")
                     result = NTQQHooker.safeReturn(method)
                 }
                 true
             }.getOrElse {
-                YLog.debug("GPUResourceHook: ${this.name}.$candidate(Context) not found")
                 false
             }
             if (hooked) return true

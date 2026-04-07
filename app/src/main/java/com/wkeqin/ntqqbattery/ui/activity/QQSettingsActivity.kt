@@ -24,7 +24,6 @@ class QQSettingsActivity : BaseHostActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_NTQQBattery)
         super.onCreate(savedInstanceState)
-        YLog.info("QQSettingsActivity: onCreate")
         runCatching {
             setContentView(R.layout.activity_main)
             applyWindowBackground()
@@ -46,7 +45,6 @@ class QQSettingsActivity : BaseHostActivity() {
             }
 
             renderFeatureSettings(findViewById(R.id.settingsContainer))
-            YLog.info("QQSettingsActivity: renderFeatureSettings done")
         }.onFailure {
             YLog.error("QQSettingsActivity: onCreate failed: ${it.stackTraceToString()}")
             Toast.makeText(this, "NTQQBattery 设置页初始化失败", Toast.LENGTH_SHORT).show()

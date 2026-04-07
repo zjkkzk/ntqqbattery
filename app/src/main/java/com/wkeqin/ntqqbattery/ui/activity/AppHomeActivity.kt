@@ -4,14 +4,12 @@ import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.highcapable.yukihookapi.YukiHookAPI
-import com.highcapable.yukihookapi.hook.log.YLog
 import com.wkeqin.ntqqbattery.R
 
 open class AppHomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        YLog.info("AppHomeActivity: onCreate")
         setContentView(R.layout.activity_app_home)
 
         val statusText = findViewById<TextView>(R.id.statusText)

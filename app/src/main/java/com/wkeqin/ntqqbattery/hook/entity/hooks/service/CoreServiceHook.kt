@@ -67,16 +67,6 @@ object CoreServiceHook : YukiBaseHooker() {
             }
         }
 
-        "com.tencent.mobileqq.msf.service.MsfCoreService".toClassOrNull()?.method {
-            name = "onStartCommand"
-        }?.hook()?.before {
-            if (NTQQHooker.isBackgroundRestrictedProcess()) {
-                YLog.debug("Blocked MsfCoreService.onStartCommand in background")
-                result = Service.START_NOT_STICKY
-                (instance as? Service)?.stopSelf()
-            }
-        }
-
         "com.tencent.mobileqq.app.CoreService${'$'}KernelService".toClassOrNull()?.apply {
             method { name = "onCreate" }.hookAll().before {
                 if (NTQQHooker.isBackgroundRestrictedProcess()) {
