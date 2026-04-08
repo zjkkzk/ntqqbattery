@@ -5,10 +5,10 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.AttrRes
-import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import com.highcapable.yukihookapi.YukiHookAPI
@@ -22,7 +22,6 @@ import com.wkeqin.ntqqbattery.hook.entity.FeatureRegistry
 class QQSettingsActivity : BaseHostActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(R.style.Theme_NTQQBattery)
         super.onCreate(savedInstanceState)
         runCatching {
             setContentView(R.layout.activity_main)
@@ -113,13 +112,13 @@ class QQSettingsActivity : BaseHostActivity() {
         }
     }
 
-    private fun createFeatureSwitch(feature: FeatureDefinition, addTopMargin: Boolean): SwitchCompat {
-        return SwitchCompat(this).apply {
+    private fun createFeatureSwitch(feature: FeatureDefinition, addTopMargin: Boolean): Switch {
+        return Switch(this).apply {
             text = getString(feature.titleRes)
             showText = false
             thumbTintList = createThumbTint()
             trackTintList = createTrackTint()
-            switchMinWidth = dp(52)
+            setSwitchMinWidth(dp(52))
             setTextColor(ContextCompat.getColor(context, R.color.on_surface))
             isChecked = ConfigData.isEnabled(feature)
             layoutParams = LinearLayout.LayoutParams(

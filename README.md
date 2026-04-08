@@ -1,8 +1,10 @@
 # NTQQBattery
 
-`NTQQBattery` 是一个面向 NTQQ（`com.tencent.mobileqq`）的 Xposed / LSPosed 省电优化模块。
+`NTQQBattery` 是一个面向 NTQQ 的 Xposed / LSPosed 省电优化模块。
 
 项目基于 Kotlin、YukiHookAPI 和 KSP 构建，主要针对 NTQQ 常见的耗电来源进行拦截和优化，例如频繁 WakeLock、前台保活服务、预加载、行为上报以及重型后台组件等。
+
+# 注意
 
 ## 功能特性
 
@@ -28,59 +30,9 @@
 - 拦截 TVK 视频统计上报
 - 优化 GIF 渲染行为，防止恶意 GIF
 
-## 适用范围
+## 注意
 
-- 目标应用：`com.tencent.mobileqq`
-- Android `minSdk`：26
-- Android `targetSdk`：36
-- Xposed API：82
-- 清单中声明的最低 Xposed 版本：93
-
-## 项目结构
-
-模块通过 YukiHookAPI 注入 NTQQ，并从主入口分发各项功能 Hook：
-
-- 入口文件：[HookEntry.kt](app/src/main/java/com/wkeqin/ntqqbattery/hook/HookEntry.kt)
-- Hook 调度核心：[NTQQHooker.kt](app/src/main/java/com/wkeqin/ntqqbattery/hook/entity/NTQQHooker.kt)
-- 功能注册表：[FeatureRegistry.kt](app/src/main/java/com/wkeqin/ntqqbattery/hook/entity/FeatureRegistry.kt)
-- Hook 计划注册表：[HookPlanRegistry.kt](app/src/main/java/com/wkeqin/ntqqbattery/hook/entity/HookPlanRegistry.kt)
-
-模块设置页提供开关界面，可以直接对各项优化进行启用或关闭，无需修改代码。
-
-## 使用方式
-
-1. 安装支持 Xposed 的框架，例如 LSPosed。
-2. 编译或安装 `NTQQBattery` APK。
-3. 在 Xposed 管理器中启用本模块。
-4. 将作用域勾选到 `QQ / com.tencent.mobileqq`。
-5. 重启 NTQQ，然后在模块设置页中按需开启功能。
-
-## 构建说明
-
-环境要求：
-
-- JDK 17
-- Android SDK API 36
-- 项目自带 Gradle Wrapper
-
-构建 Debug 版本：
-
-```bash
-cd NTQQBattery
-./gradlew :app:assembleDebug
-```
-
-## 技术栈
-
-- Kotlin
-- Android Gradle Plugin 8.13.2
-- Kotlin 2.2.21
-- KSP
-- YukiHookAPI 1.3.1
-- KavaRef 1.0.2
-
-## 注意事项
-
+- 作者仅在 NTQQ 9.2.70+ 做过测试，其他版本可能存在兼容性！！
 - 本项目专门面向 NTQQ，不是通用 QQ Hook 框架。
 - 某些激进优化可能影响部分功能行为，建议逐项开启并自行验证常用功能是否正常。
 - 一部分优化本质上是用后台活动能力、上报能力或保活能力来换取更低功耗。

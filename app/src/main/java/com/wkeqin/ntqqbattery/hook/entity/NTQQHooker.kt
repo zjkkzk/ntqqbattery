@@ -379,7 +379,6 @@ object NTQQHooker : YukiBaseHooker() {
             if (context != null && !isEarlyHooked) {
                 isEarlyHooked = true
                 runCatching { 
-                    ConfigData.init(context) 
                     NTQQFeatures.init(context.classLoader)
                     FeatureLocator.warmup(context, context.classLoader)
                 }

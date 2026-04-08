@@ -22,27 +22,33 @@ object ConfigData {
     private var runtimePrefs: YukiHookPrefsBridge? = null
 
     fun init(context: Context) {
+        val prefsContext = resolvePrefsContext(context)
         // 桥接配置用于兼容模块进程读取。
-        sharedPrefs = context.prefs(name = SHARED_PREFS_NAME)
+        sharedPrefs = prefsContext.prefs(name = SHARED_PREFS_NAME)
         // 当前进程内的功能开关统一走 native，保证寄生活动与 Hook 读写同一份配置。
-        featurePrefs = context.prefs(name = SHARED_PREFS_NAME).native()
-        sharedWritablePrefs = resolveModulePrefs(context, SHARED_PREFS_NAME)
+        featurePrefs = prefsContext.prefs(name = SHARED_PREFS_NAME).native()
+        sharedWritablePrefs = resolveModulePrefs(prefsContext, SHARED_PREFS_NAME)
 
         // 运行时缓存/状态只在当前进程使用，继续走 native。
-        runtimePrefs = context.prefs(name = RUNTIME_PREFS_NAME).native()
+        runtimePrefs = prefsContext.prefs(name = RUNTIME_PREFS_NAME).native()
+    }
+
+    private fun resolvePrefsContext(context: Context): Context {
+        if (context.packageName == BuildConfig.APPLICATION_ID) return context
+        return runCatching {
+            context.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY)
+        }.getOrElse { context }
     }
 
     private fun resolveModulePrefs(context: Context, name: String): SharedPreferences? {
-        val moduleContext = runCatching {
-            context.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY)
-        }.getOrNull() ?: context
         return runCatching {
-            moduleContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+            context.getSharedPreferences(name, Context.MODE_PRIVATE)
         }.getOrNull()
     }
 
     private fun getBoolean(key: String, defValue: Boolean): Boolean {
         featurePrefs?.takeIf { it.contains(key) }?.let { return it.getBoolean(key, defValue) }
+        sharedWritablePrefs?.takeIf { it.contains(key) }?.let { return it.getBoolean(key, defValue) }
         return sharedPrefs?.getBoolean(key, defValue) ?: defValue
     }
 
