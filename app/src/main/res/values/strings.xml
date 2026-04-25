@@ -39,4 +39,5 @@
     <string name="block_mars_wake_lock">Suppress Mars networking library WakeLock</string>
     <string name="hide_desktop_icon">Hide desktop icon</string>
     <string name="hide_desktop_icon_summary">After hiding, you can still enter from LSPosed module settings.</string>
+    <string name="feature_degraded">Incompatible with current QQ version</string>
 </resources>

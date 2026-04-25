@@ -112,26 +112,40 @@ class QQSettingsActivity : BaseHostActivity() {
         }
     }
 
-    private fun createFeatureSwitch(feature: FeatureDefinition, addTopMargin: Boolean): Switch {
-        return Switch(this).apply {
-            text = getString(feature.titleRes)
-            showText = false
-            thumbTintList = createThumbTint()
-            trackTintList = createTrackTint()
-            setSwitchMinWidth(dp(52))
-            setTextColor(ContextCompat.getColor(context, R.color.on_surface))
-            isChecked = ConfigData.isEnabled(feature)
+    private fun createFeatureSwitch(feature: FeatureDefinition, addTopMargin: Boolean): LinearLayout {
+        val isDegraded = ConfigData.isDegraded(feature)
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 if (addTopMargin) topMargin = dp(10)
             }
-            setOnCheckedChangeListener { buttonView, isChecked ->
-                if (buttonView.isPressed) {
-                    ConfigData.setEnabled(feature, isChecked)
+
+            addView(Switch(this@QQSettingsActivity).apply {
+                val label = getString(feature.titleRes)
+                text = if (isDegraded) {
+                    android.text.SpannableString(label).apply {
+                        setSpan(android.text.style.UnderlineSpan(), 0, length, 0)
+                    }
+                } else label
+                showText = false
+                thumbTintList = createThumbTint()
+                trackTintList = createTrackTint()
+                setSwitchMinWidth(dp(52))
+                setTextColor(ContextCompat.getColor(context, R.color.on_surface))
+                isChecked = ConfigData.isEnabled(feature)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setOnCheckedChangeListener { buttonView, isChecked ->
+                    if (buttonView.isPressed) {
+                        ConfigData.setEnabled(feature, isChecked)
+                    }
                 }
-            }
+            })
         }
     }
 

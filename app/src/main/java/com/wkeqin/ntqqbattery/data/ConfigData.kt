@@ -14,8 +14,9 @@ object ConfigData {
     private const val HIDE_DESKTOP_ICON = "hide_desktop_icon"
     const val FEATURE_CACHE_VERSION = "feature_cache_version"
 
-    // Hook 状态追踪 (后缀 _status)
+    // Hook 状态追踪 (后缀 _status / _degraded)
     private fun getStatusKey(configKey: String) = "${configKey}_status"
+    private fun getDegradedKey(configKey: String) = "${configKey}_degraded"
 
     private var sharedPrefs: YukiHookPrefsBridge? = null
     private var featurePrefs: YukiHookPrefsBridge? = null
@@ -75,6 +76,12 @@ object ConfigData {
 
     fun setHooked(feature: FeatureDefinition, value: Boolean) {
         runtimePrefs?.edit { putBoolean(getStatusKey(feature.key), value) }
+    }
+
+    fun isDegraded(feature: FeatureDefinition) = runtimePrefs?.getBoolean(getDegradedKey(feature.key), false) ?: false
+
+    fun setDegraded(feature: FeatureDefinition, value: Boolean) {
+        runtimePrefs?.edit { putBoolean(getDegradedKey(feature.key), value) }
     }
 
     fun isDesktopIconHidden() = getBoolean(HIDE_DESKTOP_ICON, false)

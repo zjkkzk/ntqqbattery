@@ -9,6 +9,7 @@ import com.wkeqin.ntqqbattery.hook.entity.HookPlan
 import com.wkeqin.ntqqbattery.hook.entity.HookStage
 import com.wkeqin.ntqqbattery.hook.entity.NTQQHooker
 import com.wkeqin.ntqqbattery.hook.entity.features.MSFFeatures
+import com.wkeqin.ntqqbattery.hook.factory.HookResultTracker
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.*
 import com.highcapable.yukihookapi.hook.log.YLog
@@ -55,19 +56,22 @@ object MSFWakeLockHook : YukiBaseHooker() {
     override fun onHook() {
         if (!ConfigData.isEnabled(FeatureRegistry.blockMsfWakeLock)) return
 
-        hookMSFWakeUpLockManager()
-        hookMSFWakeLockWrapper()
+        val tracker = HookResultTracker("MSFWakeLock")
+        hookMSFWakeUpLockManager(tracker)
+        hookMSFWakeLockWrapper(tracker)
+        val degraded = tracker.report()
+        ConfigData.setDegraded(FeatureRegistry.blockMsfWakeLock, degraded)
     }
 
     /**
      * Hook the orchestrator class MSFWakeUpLockManager (f0/c.java).
      * This class decides *when* and *how long* to acquire WakeLock based on event type.
      */
-    private fun hookMSFWakeUpLockManager() {
+    private fun hookMSFWakeUpLockManager(tracker: HookResultTracker) {
         MSFFeatures.MSFWakeUpLockManagerClass?.apply {
             // Hook all single-param "a" methods, filter by argument type inside callback.
             // Covers: a(int), a(long), a(ToServiceMsg), a(FromServiceMsg)
-            runCatching {
+            tracker.tryHook("a(1 param)") {
                 method {
                     name = "a"
                     paramCount = 1
@@ -100,13 +104,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                         }
                     }
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook a() methods: ${it.message}")
             }
 
             // b() - ConnOpenPrepare: acquires for connOpenLockTime ms
             // Skip - connection setup is network-bound.
-            runCatching {
+            tracker.tryHook("b()") {
                 method {
                     name = "b"
                     emptyParam()
@@ -114,13 +116,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                     YLog.debug("MSFWakeLock: blocked ConnOpenPrepare WakeLock")
                     result = null
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook b(): ${it.message}")
             }
 
             // c() - ScreenOff handler: acquires for backgroundLockTime ms
             // Skip - screen off doesn't need CPU lock for MSF.
-            runCatching {
+            tracker.tryHook("c()") {
                 method {
                     name = "c"
                     emptyParam()
@@ -128,13 +128,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                     YLog.debug("MSFWakeLock: blocked screenOff WakeLock")
                     result = null
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook c(): ${it.message}")
             }
 
             // d() - ScreenOn handler: acquires for foreground/background lock time
             // Skip - screen on means CPU is already awake.
-            runCatching {
+            tracker.tryHook("d()") {
                 method {
                     name = "d"
                     emptyParam()
@@ -142,13 +140,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                     YLog.debug("MSFWakeLock: blocked screenOn WakeLock")
                     result = null
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook d(): ${it.message}")
             }
 
             // f() - Foreground event: acquires for foregroundLockTime
             // Skip - app is coming to foreground, CPU is awake.
-            runCatching {
+            tracker.tryHook("f()") {
                 method {
                     name = "f"
                     emptyParam()
@@ -156,13 +152,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                     YLog.debug("MSFWakeLock: blocked foreground WakeLock")
                     result = null
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook f(): ${it.message}")
             }
 
             // h() - Background event: acquires for backgroundLockTime
             // Skip - entering background doesn't need to hold CPU lock.
-            runCatching {
+            tracker.tryHook("h()") {
                 method {
                     name = "h"
                     emptyParam()
@@ -170,12 +164,11 @@ object MSFWakeLockHook : YukiBaseHooker() {
                     YLog.debug("MSFWakeLock: blocked background WakeLock")
                     result = null
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook h(): ${it.message}")
             }
 
-            YLog.info("MSFWakeLock: hooked MSFWakeUpLockManager successfully")
-            ConfigData.setHooked(FeatureRegistry.blockMsfWakeLock, true)
+            if (tracker.hasAnySuccess) {
+                ConfigData.setHooked(FeatureRegistry.blockMsfWakeLock, true)
+            }
         } ?: YLog.warn("MSFWakeLock: MSFWakeUpLockManagerClass not found")
     }
 
@@ -184,12 +177,12 @@ object MSFWakeLockHook : YukiBaseHooker() {
      * Tag is "MSF:WakeLock", timeout is 300000ms (5 min).
      * If any WakeLock slips through the orchestrator hook, cap it here.
      */
-    private fun hookMSFWakeLockWrapper() {
+    private fun hookMSFWakeLockWrapper(tracker: HookResultTracker) {
         MSFFeatures.MSFWakeLockWrapperClass?.apply {
             // a(long) - Acquire for duration: calls wakeLock.acquire(300000) then posts delayed release
             // Cap the duration to MAX_MSG_PUSH_LOCK_MS as a safety net.
             // Only one a() method with 1 param in this class, no ambiguity.
-            runCatching {
+            tracker.tryHook("wrapper.a(long)") {
                 method {
                     name = "a"
                     paramCount = 1
@@ -200,11 +193,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
                         args(0).set(MAX_MSG_PUSH_LOCK_MS)
                     }
                 }
-            }.onFailure {
-                YLog.error("MSFWakeLock: failed to hook wrapper a(long): ${it.message}")
             }
-
-            YLog.info("MSFWakeLock: hooked MSFWakeLockWrapper successfully")
         } ?: YLog.warn("MSFWakeLock: MSFWakeLockWrapperClass not found")
     }
 }

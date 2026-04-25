@@ -6,6 +6,7 @@ import com.wkeqin.ntqqbattery.hook.entity.HookPlan
 import com.wkeqin.ntqqbattery.hook.entity.HookStage
 import com.wkeqin.ntqqbattery.hook.entity.NTQQHooker
 import com.wkeqin.ntqqbattery.hook.entity.features.PerfFeatures
+import com.wkeqin.ntqqbattery.hook.factory.HookResultTracker
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.*
 import com.highcapable.yukihookapi.hook.log.YLog
@@ -22,8 +23,10 @@ object PandoraExHook : YukiBaseHooker() {
     override fun onHook() {
         if (ConfigData.isEnabled(FeatureRegistry.blockQQBatteryMonitor).not()) return
 
+        val tracker = HookResultTracker("PandoraEx")
+
         PerfFeatures.PandoraEventReportHelperClass?.apply {
-            runCatching {
+            tracker.tryHook("PandoraEventReportHelper.c()") {
                 method { name = "c"; emptyParam() }.hook().before {
                     if (NTQQHooker.isBackground()) {
                         YLog.debug("Blocked background PandoraEventReportHelper reporting cycle")
@@ -34,7 +37,7 @@ object PandoraExHook : YukiBaseHooker() {
         }
 
         PerfFeatures.MonitorReporterClass?.apply {
-            runCatching {
+            tracker.tryHook("MonitorReporter.sReportCheckRunnable") {
                 field { name = "sReportCheckRunnable" }.get().any()?.let { runnable ->
                     runnable.javaClass.method { name = "run"; emptyParam() }.hook().before {
                         if (NTQQHooker.isBackground()) {
@@ -45,5 +48,7 @@ object PandoraExHook : YukiBaseHooker() {
                 }
             }
         }
+
+        tracker.report()
     }
 }

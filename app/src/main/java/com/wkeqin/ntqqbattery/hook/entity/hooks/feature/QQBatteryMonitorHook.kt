@@ -9,6 +9,7 @@ import com.wkeqin.ntqqbattery.hook.entity.HookPlan
 import com.wkeqin.ntqqbattery.hook.entity.HookStage
 import com.wkeqin.ntqqbattery.hook.entity.NTQQHooker
 import com.wkeqin.ntqqbattery.hook.entity.features.PerfFeatures
+import com.wkeqin.ntqqbattery.hook.factory.HookResultTracker
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
 
@@ -32,15 +33,17 @@ object QQBatteryMonitorHook : YukiBaseHooker() {
     override fun onHook() {
         if (ConfigData.isEnabled(FeatureRegistry.blockQQBatteryMonitor).not()) return
 
+        val tracker = HookResultTracker("QQBatteryMonitor")
+
         PerfFeatures.BatteryMonitorClass?.apply {
-            runCatching {
+            tracker.tryHook("BatteryMonitor.b/init") {
                 method {
                     name { it == "b" || it == "init" }
                     emptyParam()
                 }.hook().before { result = NTQQHooker.safeReturn(method) }
             }
 
-            runCatching {
+            tracker.tryHook("BatteryMonitor.a/checkCpuUsage") {
                 method {
                     name { it == "a" || it == "checkCpuUsage" }
                     param(String::class.java)
@@ -49,20 +52,23 @@ object QQBatteryMonitorHook : YukiBaseHooker() {
         }
 
         PerfFeatures.QQBatteryMonitorCoreClass?.apply {
-            runCatching {
+            tracker.tryHook("QQBatteryMonitorCore.d/onTurnOn") {
                 method {
                     name { it == "d" || it == "onTurnOn" }
                     emptyParam()
                 }.hook().before { result = NTQQHooker.safeReturn(method) }
             }
 
-            runCatching {
+            tracker.tryHook("QQBatteryMonitorCore.a/onForeground") {
                 method {
                     name { it == "a" || it == "onForeground" }
                     paramCount = 1
                 }.hook().before { result = NTQQHooker.safeReturn(method) }
             }
         }
-        ConfigData.setHooked(FeatureRegistry.blockQQBatteryMonitor, true)
+
+        val degraded = tracker.report()
+        ConfigData.setHooked(FeatureRegistry.blockQQBatteryMonitor, tracker.hasAnySuccess)
+        ConfigData.setDegraded(FeatureRegistry.blockQQBatteryMonitor, degraded)
     }
 }

@@ -37,4 +37,5 @@
     <string name="block_mars_wake_lock">抑制 Mars 网络库 WakeLock</string>
     <string name="hide_desktop_icon">隐藏桌面图标</string>
     <string name="hide_desktop_icon_summary">隐藏后仍可从 LSPosed 的模块设置入口进入。</string>
+    <string name="feature_degraded">当前 QQ 版本不兼容</string>
 </resources>
