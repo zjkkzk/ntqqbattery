@@ -1,6 +1,7 @@
 package com.wkeqin.ntqqbattery.hook.entity
 
 import android.content.Context
+import com.highcapable.yukihookapi.hook.log.YLog
 import java.util.concurrent.ConcurrentHashMap
 
 object HookDispatcher {
@@ -13,14 +14,26 @@ object HookDispatcher {
         context: Context? = null,
         isMainProcess: Boolean
     ) {
+        val start = System.currentTimeMillis()
         HookPlanRegistry.plans
             .asSequence()
             .filter { it.stage == stage }
             .filter { it.processScope == ProcessScope.ALL || isMainProcess }
             .forEach { plan ->
                 if (installedPlanIds.add(plan.id)) {
-                    plan.install.invoke(owner, context)
+                    val planStart = System.currentTimeMillis()
+                    runCatching {
+                        plan.install.invoke(owner, context)
+                    }.onFailure {
+                        YLog.error("HookDispatcher: ${plan.id} failed: ${it.message}\n${it.stackTraceToString()}")
+                    }
+                    val planElapsed = System.currentTimeMillis() - planStart
+                    if (planElapsed > 50) {
+                        YLog.error("HookDispatcher: ${plan.id} took ${planElapsed}ms")
+                    }
                 }
             }
+        val elapsed = System.currentTimeMillis() - start
+        YLog.error("HookDispatcher: stage=$stage done in ${elapsed}ms")
     }
 }

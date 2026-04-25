@@ -418,8 +418,11 @@ object NTQQHooker : YukiBaseHooker() {
             onCreate {
                 NTQQFeatures.init(appClassLoader!!)
                 YLog.debug("NTQQBattery hook starting in $packageName ($processName)")
-                ConfigData.init(this) 
-                FeatureLocator.warmup(this, appClassLoader!!)
+                ConfigData.init(this)
+                // 带内存监控的 warmup，排查内存大户
+                if (FeatureRegistry.all.any { ConfigData.isEnabled(it) }) {
+                    FeatureLocator.warmup(this, appClassLoader!!)
+                }
                 registerStateReceiver(this)
 
                 HookDispatcher.install(

@@ -19,8 +19,9 @@ object QQBatteryMonitorHook : YukiBaseHooker() {
         key = "block_qq_battery_monitor",
         titleRes = R.string.block_qq_battery_monitor,
         summaryRes = R.string.block_qq_battery_monitor,
+        noteRes = R.string.block_qq_battery_monitor_note,
         category = FeatureCategory.CORE,
-        defaultEnabled = true
+        defaultEnabled = false
     )
 
     val plan = HookPlan(

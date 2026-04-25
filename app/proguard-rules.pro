@@ -8,12 +8,18 @@
 
 # YukiHookAPI 核心保留
 -keep interface com.highcapable.yukihookapi.** { *; }
+-keep class com.highcapable.yukihookapi.** { *; }
 -keep class * implements com.highcapable.yukihookapi.hook.xposed.proxy.IYukiHookXposedInit { *; }
 -dontwarn com.highcapable.yukihookapi.**
 
 # 允许混淆和优化子 Hooker 及其内部调用
 -keep class com.wkeqin.ntqqbattery.hook.HookEntry { *; }
 -keep class com.wkeqin.ntqqbattery.BuildConfig { *; }
+
+# 寄生 Activity — 通过代理类名在宿主中加载，R8 不可见，必须保留
+-keep class com.wkeqin.ntqqbattery.ui.activity.BaseHostActivity { *; }
+-keep class com.wkeqin.ntqqbattery.ui.activity.** extends com.wkeqin.ntqqbattery.ui.activity.BaseHostActivity { *; }
+-keep class * implements com.highcapable.yukihookapi.hook.xposed.parasitic.activity.proxy.ModuleActivity { *; }
 
 # R8 强力剥离日志 (需要开启 optimization 模式)
 -assumenosideeffects class com.highcapable.yukihookapi.hook.log.YLog {

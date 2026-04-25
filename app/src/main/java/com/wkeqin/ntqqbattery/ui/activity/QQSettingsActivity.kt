@@ -57,11 +57,36 @@ class QQSettingsActivity : BaseHostActivity() {
         }
     }
 
+    /**
+     * 使用模块 Resources 加载颜色，避免宿主 Resources 错误解析模块资源 ID
+     */
+    private fun loadModuleColor(resId: Int): Int {
+        val moduleRes = getModuleResources()
+        if (moduleRes != null) {
+            try {
+                return moduleRes.getColor(resId, theme)
+            } catch (_: Exception) {}
+        }
+        return ContextCompat.getColor(this, resId)
+    }
+
     private fun resolveColor(@AttrRes attr: Int): Int? {
         val typedValue = TypedValue()
         if (!theme.resolveAttribute(attr, typedValue, true)) return null
         return when {
-            typedValue.resourceId != 0 -> ContextCompat.getColor(this, typedValue.resourceId)
+            typedValue.resourceId != 0 -> {
+                // 优先使用模块 Resources 加载颜色，避免宿主 Resources 错误解析模块资源 ID
+                val moduleRes = getModuleResources()
+                if (moduleRes != null) {
+                    try {
+                        moduleRes.getColor(typedValue.resourceId, theme)
+                    } catch (e: Exception) {
+                        resources.getColor(typedValue.resourceId, theme)
+                    }
+                } else {
+                    resources.getColor(typedValue.resourceId, theme)
+                }
+            }
             typedValue.type in TypedValue.TYPE_FIRST_COLOR_INT..TypedValue.TYPE_LAST_COLOR_INT -> typedValue.data
             else -> null
         }
@@ -82,7 +107,7 @@ class QQSettingsActivity : BaseHostActivity() {
     private fun createCategoryTitle(category: FeatureCategory, addTopMargin: Boolean): TextView {
         return TextView(this).apply {
             text = getString(category.titleRes)
-            setTextColor(ContextCompat.getColor(context, R.color.on_surface))
+            setTextColor(loadModuleColor(R.color.on_surface))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(
@@ -134,7 +159,7 @@ class QQSettingsActivity : BaseHostActivity() {
                 thumbTintList = createThumbTint()
                 trackTintList = createTrackTint()
                 setSwitchMinWidth(dp(52))
-                setTextColor(ContextCompat.getColor(context, R.color.on_surface))
+                setTextColor(loadModuleColor(R.color.on_surface))
                 isChecked = ConfigData.isEnabled(feature)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -146,12 +171,28 @@ class QQSettingsActivity : BaseHostActivity() {
                     }
                 }
             })
+
+            // 显示 noteRes 提示文字（如果有）
+            feature.noteRes?.let { noteRes ->
+                addView(TextView(this@QQSettingsActivity).apply {
+                    text = getString(noteRes)
+                    setTextColor(loadModuleColor(R.color.on_surface_variant))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        topMargin = dp(2)
+                        marginStart = dp(4)
+                    }
+                })
+            }
         }
     }
 
     private fun createThumbTint(): ColorStateList {
-        val checked = ContextCompat.getColor(this, R.color.accent)
-        val unchecked = ContextCompat.getColor(this, R.color.white)
+        val checked = loadModuleColor(R.color.accent)
+        val unchecked = loadModuleColor(R.color.white)
         return ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
             intArrayOf(checked, unchecked)
@@ -159,8 +200,8 @@ class QQSettingsActivity : BaseHostActivity() {
     }
 
     private fun createTrackTint(): ColorStateList {
-        val checked = ContextCompat.getColor(this, R.color.accent_dark)
-        val unchecked = ContextCompat.getColor(this, R.color.on_surface_variant)
+        val checked = loadModuleColor(R.color.accent_dark)
+        val unchecked = loadModuleColor(R.color.on_surface_variant)
         return ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
             intArrayOf(checked, unchecked)
@@ -170,7 +211,7 @@ class QQSettingsActivity : BaseHostActivity() {
     private fun createFooterNote(): TextView {
         return TextView(this).apply {
             text = getString(R.string.first_build_note)
-            setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant))
+            setTextColor(loadModuleColor(R.color.on_surface_variant))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

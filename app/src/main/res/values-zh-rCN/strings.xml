@@ -4,6 +4,7 @@
     <string name="module_inactive">模块未激活 (请在 LSPosed 中勾选并重启 QQ)</string>
     <string name="block_system_wake_lock">屏蔽系统级唤醒锁 (WakeLock)</string>
     <string name="block_qq_battery_monitor">屏蔽 QQ 自带耗电监控 (锁定日志以降 FD)</string>
+    <string name="block_qq_battery_monitor_note">⚠ 低版本启用可能导致异常内存占用</string>
     <string name="block_core_service">禁止 CoreService 前台常驻</string>
     <string name="block_lock_screen_keep_alive">禁用锁屏全屏活动 (保持息屏)</string>
     <string name="block_mini_app_preload">禁用小程序后台预加载</string>

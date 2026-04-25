@@ -5,7 +5,11 @@ import android.content.SharedPreferences
 import com.wkeqin.ntqqbattery.BuildConfig
 import com.wkeqin.ntqqbattery.hook.entity.FeatureDefinition
 import com.highcapable.yukihookapi.hook.factory.prefs
+import com.highcapable.yukihookapi.hook.log.YLog
 import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
+import org.json.JSONObject
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 object ConfigData {
 
@@ -23,6 +27,12 @@ object ConfigData {
     private var sharedWritablePrefs: SharedPreferences? = null
     private var runtimePrefs: YukiHookPrefsBridge? = null
 
+    // FeatureLocator 类搜索缓存 — 直接用文件，绕开 SharedPreferences 跨进程问题
+    private var cacheFile: File? = null
+    private val cacheMap: MutableMap<String, String> = ConcurrentHashMap()
+    @Volatile private var cacheDirty = false
+    @Volatile private var batchMode = false
+
     fun init(context: Context) {
         val prefsContext = resolvePrefsContext(context)
         // 桥接配置用于兼容模块进程读取。
@@ -33,6 +43,55 @@ object ConfigData {
 
         // 运行时缓存/状态只在当前进程使用，继续走 native。
         runtimePrefs = prefsContext.prefs(name = RUNTIME_PREFS_NAME).native()
+
+        // FeatureLocator 缓存：直接读写文件，不依赖 SharedPreferences
+        initFileCache(context)
+    }
+
+    private fun initFileCache(context: Context) {
+        runCatching {
+            val dir = File(context.filesDir, "locator_cache")
+            dir.mkdirs()
+            cacheFile = File(dir, "classes.json")
+            loadCache()
+            YLog.info("ConfigData: loaded ${cacheMap.size} cached entries from ${cacheFile?.absolutePath}")
+        }.onFailure {
+            YLog.error("ConfigData: failed to init file cache: ${it.message}")
+        }
+    }
+
+    private fun loadCache() {
+        val file = cacheFile ?: return
+        if (!file.exists()) return
+        runCatching {
+            val json = JSONObject(file.readText())
+            cacheMap.clear()
+            json.keys().forEach { cacheMap[it] = json.getString(it) }
+        }.onFailure {
+            YLog.error("ConfigData: cache file corrupted, resetting: ${it.message}")
+            cacheMap.clear()
+        }
+    }
+
+    private fun saveCache() {
+        val file = cacheFile ?: return
+        if (!cacheDirty) return
+        runCatching {
+            val json = JSONObject(cacheMap)
+            file.writeText(json.toString())
+            cacheDirty = false
+        }.onFailure {
+            YLog.error("ConfigData: failed to save cache: ${it.message}")
+        }
+    }
+
+    /** 批量写入场景：先写内存，最后一并落盘 */
+    fun putStringBatch(block: () -> Unit) {
+        batchMode = true
+        try { block() } finally {
+            batchMode = false
+            saveCache()
+        }
     }
 
     private fun resolvePrefsContext(context: Context): Context {
@@ -59,10 +118,14 @@ object ConfigData {
         sharedWritablePrefs?.edit()?.putBoolean(key, value)?.apply()
     }
 
-    fun getString(key: String, defValue: String = "") = runtimePrefs?.getString(key, defValue) ?: defValue
+    fun getString(key: String, defValue: String = ""): String {
+        return cacheMap[key]?.takeIf { it.isNotEmpty() } ?: defValue
+    }
 
     fun putString(key: String, value: String) {
-        runtimePrefs?.edit { putString(key, value) }
+        cacheMap[key] = value
+        cacheDirty = true
+        if (!batchMode) saveCache()
     }
 
     // 状态读写接口

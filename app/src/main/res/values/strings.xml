@@ -4,6 +4,7 @@
     <string name="module_inactive">Module is not active yet.</string>
     <string name="block_system_wake_lock">Block system WakeLock acquire/release</string>
     <string name="block_qq_battery_monitor">Block NTQQ battery monitor (Lock log level to reduce FD)</string>
+    <string name="block_qq_battery_monitor_note">⚠ May cause abnormal memory usage on older versions</string>
     <string name="block_core_service">Block CoreService foreground keep-alive</string>
     <string name="block_upload_wake_lock">Block upload service WakeLock</string>
     <string name="block_lock_screen_keep_alive">Close lock-screen keep-alive activity</string>
