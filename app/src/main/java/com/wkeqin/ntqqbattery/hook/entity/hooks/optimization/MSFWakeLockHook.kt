@@ -53,6 +53,10 @@ object MSFWakeLockHook : YukiBaseHooker() {
     /** Maximum WakeLock hold time for MsgPush (ms) */
     private const val MAX_MSG_PUSH_LOCK_MS = 2000L
 
+    /** 纯反射预检方法是否存在，避免触发 YukiHookAPI finder 内部的 NoSuchMethod 错误日志 */
+    private fun Class<*>.hasMethod(name: String, paramCount: Int): Boolean =
+        declaredMethods.any { it.name == name && it.parameterCount == paramCount }
+
     override fun onHook() {
         if (!ConfigData.isEnabled(FeatureRegistry.blockMsfWakeLock)) return
 
@@ -71,7 +75,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
         MSFFeatures.MSFWakeUpLockManagerClass?.apply {
             // Hook all single-param "a" methods, filter by argument type inside callback.
             // Covers: a(int), a(long), a(ToServiceMsg), a(FromServiceMsg)
-            tracker.tryHook("a(1 param)") {
+            if (hasMethod("a", 1)) tracker.tryHook("a(1 param)") {
                 method {
                     name = "a"
                     paramCount = 1
@@ -108,7 +112,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
 
             // b() - ConnOpenPrepare: acquires for connOpenLockTime ms
             // Skip - connection setup is network-bound.
-            tracker.tryHook("b()") {
+            if (hasMethod("b", 0)) tracker.tryHook("b()") {
                 method {
                     name = "b"
                     emptyParam()
@@ -120,7 +124,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
 
             // c() - ScreenOff handler: acquires for backgroundLockTime ms
             // Skip - screen off doesn't need CPU lock for MSF.
-            tracker.tryHook("c()") {
+            if (hasMethod("c", 0)) tracker.tryHook("c()") {
                 method {
                     name = "c"
                     emptyParam()
@@ -132,7 +136,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
 
             // d() - ScreenOn handler: acquires for foreground/background lock time
             // Skip - screen on means CPU is already awake.
-            tracker.tryHook("d()") {
+            if (hasMethod("d", 0)) tracker.tryHook("d()") {
                 method {
                     name = "d"
                     emptyParam()
@@ -144,7 +148,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
 
             // f() - Foreground event: acquires for foregroundLockTime
             // Skip - app is coming to foreground, CPU is awake.
-            tracker.tryHook("f()") {
+            if (hasMethod("f", 0)) tracker.tryHook("f()") {
                 method {
                     name = "f"
                     emptyParam()
@@ -156,7 +160,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
 
             // h() - Background event: acquires for backgroundLockTime
             // Skip - entering background doesn't need to hold CPU lock.
-            tracker.tryHook("h()") {
+            if (hasMethod("h", 0)) tracker.tryHook("h()") {
                 method {
                     name = "h"
                     emptyParam()
@@ -182,7 +186,7 @@ object MSFWakeLockHook : YukiBaseHooker() {
             // a(long) - Acquire for duration: calls wakeLock.acquire(300000) then posts delayed release
             // Cap the duration to MAX_MSG_PUSH_LOCK_MS as a safety net.
             // Only one a() method with 1 param in this class, no ambiguity.
-            tracker.tryHook("wrapper.a(long)") {
+            if (hasMethod("a", 1)) tracker.tryHook("wrapper.a(long)") {
                 method {
                     name = "a"
                     paramCount = 1

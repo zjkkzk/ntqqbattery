@@ -59,13 +59,16 @@ object FeatureLocator {
 
     private fun cacheKey(name: String) = "locator_$name"
 
+    /** 哨兵值：标记此类在当前版本不存在，避免每次重启重试 */
+    private const val NOT_FOUND = "__NOT_FOUND__"
+
     private fun readCachedClass(name: String): String? {
         val value = ConfigData.getString(cacheKey(name))
         return value.ifBlank { null }
     }
 
     private fun writeCachedClass(name: String, className: String?) {
-        ConfigData.putString(cacheKey(name), className.orEmpty())
+        ConfigData.putString(cacheKey(name), className ?: NOT_FOUND)
     }
 
     private fun ensureVersionCache(context: Context) {
@@ -73,10 +76,19 @@ object FeatureLocator {
         val cachedVersion = ConfigData.getString(ConfigData.FEATURE_CACHE_VERSION)
         if (cachedVersion != versionKey) {
             ConfigData.putString(ConfigData.FEATURE_CACHE_VERSION, versionKey)
-            // 不再清空缓存 — locate() 的 verify 机制会自动处理失效条目：
-            // 缓存的类名如果在新版本仍存在且通过 verify，直接复用；
-            // 如果类被移除/改名，verify 失败才会触发 resolve 重新搜索。
-            YLog.info("FeatureLocator: QQ version changed $cachedVersion -> $versionKey, cached entries will be lazily verified")
+            // 清除 NOT_FOUND 哨兵 — 新版本可能修复了之前找不到的类
+            var cleared = 0
+            for (key in ALL_KEYS) {
+                if (readCachedClass(key) == NOT_FOUND) {
+                    ConfigData.putString(cacheKey(key), "")
+                    cleared++
+                }
+            }
+            // 清除所有 degraded 标记 — 新版本可能修复了方法
+            for (feature in FeatureRegistry.all) {
+                ConfigData.setDegraded(feature, false)
+            }
+            YLog.info("FeatureLocator: QQ version changed $cachedVersion -> $versionKey, cleared $cleared NOT_FOUND entries + all degraded flags")
         }
     }
 
@@ -98,14 +110,23 @@ object FeatureLocator {
         verify: ((Class<*>) -> Boolean)? = null,
         resolve: (ClassLoader) -> Class<*>?
     ): Class<*>? {
-        readCachedClass(key)
-            ?.loadClass(loader)
+        val cached = readCachedClass(key)
+        // 哨兵值：上次搜索已确认不存在，跳过重试
+        if (cached == NOT_FOUND) return null
+        // 有缓存类名 → 尝试加载 + verify
+        cached?.loadClass(loader)
             ?.takeIf { verify?.invoke(it) ?: true }
             ?.let { return it }
-        return resolve(loader)?.also {
-            writeCachedClass(key, it.name)
-            YLog.info("FeatureLocator cached $label -> ${it.name}")
+        // 无缓存 / verify 失败 → 重新搜索
+        val result = resolve(loader)
+        if (result != null) {
+            writeCachedClass(key, result.name)
+            YLog.info("FeatureLocator cached $label -> ${result.name}")
+        } else {
+            writeCachedClass(key, null) // 写入 NOT_FOUND 哨兵
+            YLog.info("FeatureLocator: $label not found, marked NOT_FOUND")
         }
+        return result
     }
 
     private fun Class<*>.hasMiniAppPreloadMethod() = declaredMethods.any {

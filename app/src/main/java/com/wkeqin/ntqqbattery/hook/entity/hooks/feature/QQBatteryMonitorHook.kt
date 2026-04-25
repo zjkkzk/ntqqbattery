@@ -12,6 +12,7 @@ import com.wkeqin.ntqqbattery.hook.entity.features.PerfFeatures
 import com.wkeqin.ntqqbattery.hook.factory.HookResultTracker
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.method
+import com.highcapable.yukihookapi.hook.log.YLog
 
 object QQBatteryMonitorHook : YukiBaseHooker() {
 
@@ -33,6 +34,10 @@ object QQBatteryMonitorHook : YukiBaseHooker() {
 
     override fun onHook() {
         if (ConfigData.isEnabled(FeatureRegistry.blockQQBatteryMonitor).not()) return
+        if (ConfigData.isDegraded(FeatureRegistry.blockQQBatteryMonitor)) {
+            YLog.info("QQBatteryMonitor: degraded from last run, skipping")
+            return
+        }
 
         val tracker = HookResultTracker("QQBatteryMonitor")
 

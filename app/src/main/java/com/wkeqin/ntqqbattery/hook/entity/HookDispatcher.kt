@@ -29,11 +29,11 @@ object HookDispatcher {
                     }
                     val planElapsed = System.currentTimeMillis() - planStart
                     if (planElapsed > 50) {
-                        YLog.error("HookDispatcher: ${plan.id} took ${planElapsed}ms")
+                        YLog.debug("HookDispatcher: ${plan.id} took ${planElapsed}ms")
                     }
                 }
             }
         val elapsed = System.currentTimeMillis() - start
-        YLog.error("HookDispatcher: stage=$stage done in ${elapsed}ms")
+        YLog.debug("HookDispatcher: stage=$stage done in ${elapsed}ms")
     }
 }

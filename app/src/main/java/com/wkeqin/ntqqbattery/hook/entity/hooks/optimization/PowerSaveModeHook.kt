@@ -10,6 +10,7 @@ import com.wkeqin.ntqqbattery.hook.entity.HookStage
 import com.wkeqin.ntqqbattery.hook.factory.HookResultTracker
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.factory.*
+import com.highcapable.yukihookapi.hook.log.YLog
 
 object PowerSaveModeHook : YukiBaseHooker() {
 
@@ -31,10 +32,13 @@ object PowerSaveModeHook : YukiBaseHooker() {
         if (ConfigData.isEnabled(FeatureRegistry.forcePowerSaveMode).not()) return
 
         val tracker = HookResultTracker("PowerSaveMode")
-        tracker.tryHook("MsfSdkUtils.isPowerSaveMode()") {
-            "com.tencent.mobileqq.msf.sdk.MsfSdkUtils".toClassOrNull()?.method {
-                name = "isPowerSaveMode"; emptyParam()
-            }?.hook()?.before { result = true }
+        val clazz = "com.tencent.mobileqq.msf.sdk.MsfSdkUtils".toClassOrNull()
+        if (clazz != null && clazz.declaredMethods.any { it.name == "isPowerSaveMode" && it.parameterCount == 0 }) {
+            tracker.tryHook("MsfSdkUtils.isPowerSaveMode()") {
+                clazz.method {
+                    name = "isPowerSaveMode"; emptyParam()
+                }.hook().before { result = true }
+            }
         }
         val degraded = tracker.report()
         ConfigData.setHooked(FeatureRegistry.forcePowerSaveMode, tracker.hasAnySuccess)
