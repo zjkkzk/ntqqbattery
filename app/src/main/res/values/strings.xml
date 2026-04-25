@@ -34,4 +34,9 @@
     <string name="block_perf_monitor">Block perf monitor threads and stats reporting</string>
     <string name="block_perf_monitor_summary">Disable Perf_Monitor_Th, Profile and StatisticCollector telemetry paths</string>
     <string name="block_gif_optimization">Optimize GIF rendering &amp; defense</string>
+    <string name="block_msf_wake_lock">Suppress MSF WakeLock (top background power drain)</string>
+    <string name="block_msf_probe">Suppress MSF connection probes (Ping/Hello)</string>
+    <string name="block_mars_wake_lock">Suppress Mars networking library WakeLock</string>
+    <string name="hide_desktop_icon">Hide desktop icon</string>
+    <string name="hide_desktop_icon_summary">After hiding, you can still enter from LSPosed module settings.</string>
 </resources>

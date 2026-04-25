@@ -36,8 +36,35 @@
             android:textColor="@color/on_surface_variant"
             android:textSize="14sp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_card"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <Switch
+                android:id="@+id/hideDesktopIconSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/hide_desktop_icon"
+                android:textColor="@color/on_surface"
+                android:showText="false" />
+
+            <TextView
+                android:id="@+id/hintText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/hide_desktop_icon_summary"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="15sp" />
+        </LinearLayout>
+
         <TextView
-            android:id="@+id/hintText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

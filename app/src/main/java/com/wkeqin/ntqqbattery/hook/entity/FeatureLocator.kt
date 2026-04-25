@@ -12,8 +12,40 @@ import com.highcapable.yukihookapi.hook.log.YLog
  */
 object FeatureLocator {
 
+    // ── Cache keys ──
     private const val KEY_MINI_APP_LAUNCHER = "feature_cache_mini_app_launcher"
     private const val KEY_MSF_CONFIG = "feature_cache_msf_config"
+    private const val KEY_BATTERY_MONITOR = "feature_cache_battery_monitor"
+    private const val KEY_QQ_BATTERY_MONITOR_CORE = "feature_cache_qq_battery_monitor_core"
+    private const val KEY_GL_THREAD_MANAGER = "feature_cache_gl_thread_manager"
+    private const val KEY_PANDORA_EVENT_REPORT_HELPER = "feature_cache_pandora_event_report_helper"
+    private const val KEY_MONITOR_REPORTER = "feature_cache_monitor_reporter"
+    private const val KEY_BEACON_REPORT = "feature_cache_beacon_report"
+    private const val KEY_BEACON_TASK_MANAGER = "feature_cache_beacon_task_manager"
+    private const val KEY_BEACON_TASK_WRAPPER = "feature_cache_beacon_task_wrapper"
+    private const val KEY_QQ_BEACON_REPORT = "feature_cache_qq_beacon_report"
+    private const val KEY_NT_BEACON_REPORT = "feature_cache_nt_beacon_report"
+    private const val KEY_TVK_BEACON_REPORT = "feature_cache_tvk_beacon_report"
+    private const val KEY_BASE_VIDEO_CONTROLLER = "feature_cache_base_video_controller"
+    private const val KEY_LIBRA_GIF_EXECUTOR = "feature_cache_libra_gif_executor"
+    private const val KEY_THEME_VIDEO_CONTROLLER = "feature_cache_theme_video_controller"
+    private const val KEY_SUPER_THEME_VIDEO_CONTROLLER = "feature_cache_super_theme_video_controller"
+    private const val KEY_MSF_PULL_CONFIG_UTIL = "feature_cache_msf_pull_config_util"
+    private const val KEY_MSF_THREAD_MANAGER = "feature_cache_msf_thread_manager"
+    private const val KEY_MSF_WAKEUP_LOCK_MANAGER = "feature_cache_msf_wakeup_lock_manager"
+
+    private val ALL_KEYS = arrayOf(
+        KEY_MINI_APP_LAUNCHER, KEY_MSF_CONFIG,
+        KEY_BATTERY_MONITOR, KEY_QQ_BATTERY_MONITOR_CORE, KEY_GL_THREAD_MANAGER,
+        KEY_PANDORA_EVENT_REPORT_HELPER, KEY_MONITOR_REPORTER,
+        KEY_BEACON_REPORT, KEY_BEACON_TASK_MANAGER, KEY_BEACON_TASK_WRAPPER,
+        KEY_QQ_BEACON_REPORT, KEY_NT_BEACON_REPORT, KEY_TVK_BEACON_REPORT,
+        KEY_BASE_VIDEO_CONTROLLER, KEY_LIBRA_GIF_EXECUTOR,
+        KEY_THEME_VIDEO_CONTROLLER, KEY_SUPER_THEME_VIDEO_CONTROLLER,
+        KEY_MSF_PULL_CONFIG_UTIL, KEY_MSF_THREAD_MANAGER, KEY_MSF_WAKEUP_LOCK_MANAGER
+    )
+
+    // ── Version-aware cache management ──
 
     private fun buildVersionKey(context: Context): String {
         val pkgInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -42,9 +74,31 @@ object FeatureLocator {
         val cachedVersion = ConfigData.getString(ConfigData.FEATURE_CACHE_VERSION)
         if (cachedVersion != versionKey) {
             ConfigData.putString(ConfigData.FEATURE_CACHE_VERSION, versionKey)
-            writeCachedClass(KEY_MINI_APP_LAUNCHER, null)
-            writeCachedClass(KEY_MSF_CONFIG, null)
+            ALL_KEYS.forEach { writeCachedClass(it, null) }
             YLog.info("FeatureLocator cache reset for QQ $versionKey")
+        }
+    }
+
+    // ── Generic locate: cache read → verify → resolve fallback → cache write ──
+
+    /**
+     * 通用定位方法。读缓存 → [verify] 校验 → 调 [resolve] 回退 → 写缓存。
+     * warmup 和 getter 都通过此方法统一处理，消除模板代码。
+     */
+    private fun locate(
+        key: String,
+        loader: ClassLoader,
+        label: String,
+        verify: ((Class<*>) -> Boolean)? = null,
+        resolve: (ClassLoader) -> Class<*>?
+    ): Class<*>? {
+        readCachedClass(key)
+            ?.toClassOrNull(loader)
+            ?.takeIf { verify?.invoke(it) ?: true }
+            ?.let { return it }
+        return resolve(loader)?.also {
+            writeCachedClass(key, it.name)
+            YLog.info("FeatureLocator cached $label -> ${it.name}")
         }
     }
 
@@ -54,38 +108,7 @@ object FeatureLocator {
             it.parameterTypes.firstOrNull()?.name?.contains("IECMiniAppLauncher\$MiniAppType") == true
     }
 
-    fun warmup(context: Context, loader: ClassLoader) {
-        ensureVersionCache(context)
-        warmupMiniAppLauncher(loader)
-        warmupMSFConfig(loader)
-    }
-
-    private fun warmupMiniAppLauncher(loader: ClassLoader) {
-        val resolved = resolveMiniAppLauncher(loader) ?: return
-        writeCachedClass(KEY_MINI_APP_LAUNCHER, resolved.name)
-        YLog.info("FeatureLocator cached MiniAppLauncher -> ${resolved.name}")
-    }
-
-    private fun warmupMSFConfig(loader: ClassLoader) {
-        val resolved = resolveMSFConfig(loader) ?: return
-        writeCachedClass(KEY_MSF_CONFIG, resolved.name)
-        YLog.info("FeatureLocator cached MSFConfig -> ${resolved.name}")
-    }
-
-    fun getMiniAppLauncher(loader: ClassLoader): Class<*>? {
-        readCachedClass(KEY_MINI_APP_LAUNCHER)
-            ?.toClassOrNull(loader)
-            ?.takeIf { it.hasMiniAppPreloadMethod() }
-            ?.let { return it }
-        return resolveMiniAppLauncher(loader)?.also { writeCachedClass(KEY_MINI_APP_LAUNCHER, it.name) }
-    }
-
-    fun getMSFConfig(loader: ClassLoader): Class<*>? {
-        readCachedClass(KEY_MSF_CONFIG)
-            ?.toClassOrNull(loader)
-            ?.let { return it }
-        return resolveMSFConfig(loader)?.also { writeCachedClass(KEY_MSF_CONFIG, it.name) }
-    }
+    // ── Resolve methods (contain actual search logic) ──
 
     private fun resolveMiniAppLauncher(loader: ClassLoader): Class<*>? {
         return sequenceOf("du.a", "qu.a")
@@ -104,4 +127,270 @@ object FeatureLocator {
             constant = "ConfigID{"
         )
     }
+
+    private fun resolveBatteryMonitor(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "BatteryMonitor",
+            primaryName = "com.tencent.mobileqq.perf.battery.a",
+            packageName = "com.tencent.mobileqq.perf.battery",
+            constant = "QQBatteryMonitor"
+        )
+    }
+
+    private fun resolveQQBatteryMonitorCore(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "QQBatteryMonitorCore",
+            primaryName = "com.tencent.mobileqq.qqbattery.g",
+            packageName = "com.tencent.mobileqq.qqbattery",
+            constant = "QQBattery_QQBatteryMonitorCore"
+        )
+    }
+
+    private fun resolveGLThreadManager(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "GLThreadManager",
+            primaryName = "com.tencent.mobileqq.apollo.view.opengl.GLThreadManager",
+            packageName = "com.tencent.mobileqq.apollo.view.opengl",
+            constant = "[ApolloGL][GLThreadManager]"
+        )
+    }
+
+    private fun resolvePandoraEventReportHelper(loader: ClassLoader): Class<*>? {
+        return "com.tencent.mobileqq.qmethodmonitor.pandoraevent.PandoraEventReportHelper".toClassOrNull(loader)
+            ?: loader.searchClass(name = "NTQQ_Features_PandoraEventReportHelper") {
+                fullName { it.startsWith("com.tencent.mobileqq.qmethodmonitor.pandoraevent.") }
+                field {
+                    modifiers { isStatic }
+                    type = "java.util.concurrent.atomic.AtomicBoolean"
+                }
+            }.get()
+    }
+
+    private fun resolveMonitorReporter(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "MonitorReporter",
+            primaryName = "com.tencent.qmethod.pandoraex.core.MonitorReporter",
+            packageName = "com.tencent.qmethod.pandoraex.core",
+            constant = "MonitorReporter"
+        )
+    }
+
+    private fun resolveBeaconReport(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "BeaconReport",
+            primaryName = "com.tencent.beacon.event.open.BeaconReport",
+            packageName = "com.tencent.beacon.event.open",
+            constant = "BeaconReport"
+        )
+    }
+
+    private fun resolveBeaconTaskManager(loader: ClassLoader): Class<*>? {
+        return "com.tencent.beacon.a.b.k".toClassOrNull(loader)
+            ?: loader.searchClass(name = "NTQQ_Features_BeaconTaskManager") {
+                fullName { it.startsWith("com.tencent.beacon.") }
+                method { name = "a"; param(Runnable::class.java); returnType = Void.TYPE }
+                method { name = "a"; param(Int::class.javaPrimitiveType!!, Long::class.javaPrimitiveType!!, Long::class.javaPrimitiveType!!, Runnable::class.java); returnType = Void.TYPE }
+                method { name = "a"; param(Long::class.javaPrimitiveType!!, Runnable::class.java); returnType = Void.TYPE }
+            }.get()
+    }
+
+    private fun resolveBeaconTaskWrapper(loader: ClassLoader): Class<*>? {
+        return "com.tencent.beacon.a.b.j".toClassOrNull(loader)
+            ?: loader.searchClass(name = "NTQQ_Features_BeaconTaskWrapper") {
+                fullName { it.startsWith("com.tencent.beacon.") }
+                method { name = "run"; returnType = Void.TYPE; emptyParam() }
+                implements("java.lang.Runnable")
+            }.get()
+    }
+
+    private fun resolveQQBeaconReport(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "QQBeaconReport",
+            primaryName = "com.tencent.mobileqq.statistics.QQBeaconReport",
+            packageName = "com.tencent.mobileqq.statistics",
+            constant = "QQBeaconReport"
+        )
+    }
+
+    private fun resolveNTBeaconReport(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "NTBeaconReport",
+            primaryName = "com.tencent.qqnt.beacon.NTBeaconReport",
+            packageName = "com.tencent.qqnt.beacon",
+            constant = "NTBeaconReport"
+        )
+    }
+
+    private fun resolveTVKBeaconReport(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "TVKBeaconReport",
+            primaryName = "com.tencent.qqlive.tvkplayer.report.api.TVKBeaconReport",
+            packageName = "com.tencent.qqlive.tvkplayer.report.api",
+            constant = "TVKBeaconReport"
+        )
+    }
+
+    private fun resolveBaseVideoController(loader: ClassLoader): Class<*>? {
+        return "com.tencent.mobileqq.vas.theme.video.a".toClassOrNull(loader)
+            ?: loader.searchClass(name = "NTQQ_Features_BaseVideoController") {
+                fullName { it.startsWith("com.tencent.mobileqq.vas.theme.video.") }
+                implements("com.tencent.mobileqq.vas.theme.api.IThemeVideoController", "mqq.app.QActivityLifecycleCallbacks")
+            }.get()
+    }
+
+    private fun resolveLibraGifExecutor(loader: ClassLoader): Class<*>? {
+        return "com.tencent.libra.extension.gif.c".toClassOrNull(loader)
+            ?: loader.searchClass(name = "NTQQ_Features_LibraGifExecutor") {
+                extends("com.tencent.thread.monitor.plugin.proxy.BaseScheduledThreadPoolExecutor")
+                fullName { it.startsWith("com.tencent.libra.extension.gif.") }
+            }.get()
+    }
+
+    private fun resolveThemeVideoController(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "ThemeVideoController",
+            primaryName = "com.tencent.mobileqq.vas.theme.ThemeVideoController",
+            packageName = "com.tencent.mobileqq.vas.theme",
+            constant = "ThemeVideoController"
+        )
+    }
+
+    private fun resolveSuperThemeVideoController(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "SuperThemeVideoController",
+            primaryName = "com.tencent.mobileqq.vas.theme.video.SuperThemeVideoController",
+            packageName = "com.tencent.mobileqq.vas.theme.video",
+            constant = "SuperThemeVideoController"
+        )
+    }
+
+    private fun resolveMsfPullConfigUtil(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "MsfPullConfigUtil",
+            primaryName = "com.tencent.mobileqq.msf.core.net.utils.MsfPullConfigUtil",
+            packageName = "com.tencent.mobileqq.msf.core.",
+            constant = "MsfPullConfigUtil"
+        )
+    }
+
+    private fun resolveMsfThreadManager(loader: ClassLoader): Class<*>? {
+        return NTQQFeatures.findClassSafe(
+            cacheName = "MsfThreadManager",
+            primaryName = "com.tencent.mobileqq.msf.core.p",
+            packageName = "com.tencent.mobileqq.msf.core.",
+            constant = "MsfThreadManager"
+        )
+    }
+
+    private fun resolveMSFWakeUpLockManager(loader: ClassLoader): Class<*>? {
+        val wrapperClass = resolveMSFWakeLockWrapper(loader) ?: return null
+        // Try JADX-obfuscated name first
+        return runCatching { loader.loadClass("com.tencent.mobileqq.msf.core.f0.c") }.getOrNull()
+            // Fallback: scan f0 package for the orchestrator (has a field of type f0.a)
+            ?: runCatching {
+                for (suffix in listOf("c", "b", "d", "e", "f", "g")) {
+                    val candidate = runCatching {
+                        loader.loadClass("com.tencent.mobileqq.msf.core.f0.$suffix")
+                    }.getOrNull() ?: continue
+                    if (candidate.declaredFields.any { it.type == wrapperClass }) {
+                        return@runCatching candidate
+                    }
+                }
+                null
+            }.getOrNull()
+    }
+
+    private fun resolveMSFWakeLockWrapper(loader: ClassLoader): Class<*>? {
+        return runCatching {
+            loader.loadClass("com.tencent.mobileqq.msf.core.f0.a")
+        }.getOrNull()
+    }
+
+    // ── Warmup ──
+
+    fun warmup(context: Context, loader: ClassLoader) {
+        ensureVersionCache(context)
+        locate(KEY_MINI_APP_LAUNCHER, loader, "MiniAppLauncher", verify = { it.hasMiniAppPreloadMethod() }) { resolveMiniAppLauncher(it) }
+        locate(KEY_MSF_CONFIG, loader, "MSFConfig") { resolveMSFConfig(it) }
+        locate(KEY_BATTERY_MONITOR, loader, "BatteryMonitor") { resolveBatteryMonitor(it) }
+        locate(KEY_QQ_BATTERY_MONITOR_CORE, loader, "QQBatteryMonitorCore") { resolveQQBatteryMonitorCore(it) }
+        locate(KEY_GL_THREAD_MANAGER, loader, "GLThreadManager") { resolveGLThreadManager(it) }
+        locate(KEY_PANDORA_EVENT_REPORT_HELPER, loader, "PandoraEventReportHelper") { resolvePandoraEventReportHelper(it) }
+        locate(KEY_MONITOR_REPORTER, loader, "MonitorReporter") { resolveMonitorReporter(it) }
+        locate(KEY_BEACON_REPORT, loader, "BeaconReport") { resolveBeaconReport(it) }
+        locate(KEY_BEACON_TASK_MANAGER, loader, "BeaconTaskManager") { resolveBeaconTaskManager(it) }
+        locate(KEY_BEACON_TASK_WRAPPER, loader, "BeaconTaskWrapper") { resolveBeaconTaskWrapper(it) }
+        locate(KEY_QQ_BEACON_REPORT, loader, "QQBeaconReport") { resolveQQBeaconReport(it) }
+        locate(KEY_NT_BEACON_REPORT, loader, "NTBeaconReport") { resolveNTBeaconReport(it) }
+        locate(KEY_TVK_BEACON_REPORT, loader, "TVKBeaconReport") { resolveTVKBeaconReport(it) }
+        locate(KEY_BASE_VIDEO_CONTROLLER, loader, "BaseVideoController") { resolveBaseVideoController(it) }
+        locate(KEY_LIBRA_GIF_EXECUTOR, loader, "LibraGifExecutor") { resolveLibraGifExecutor(it) }
+        locate(KEY_THEME_VIDEO_CONTROLLER, loader, "ThemeVideoController") { resolveThemeVideoController(it) }
+        locate(KEY_SUPER_THEME_VIDEO_CONTROLLER, loader, "SuperThemeVideoController") { resolveSuperThemeVideoController(it) }
+        locate(KEY_MSF_PULL_CONFIG_UTIL, loader, "MsfPullConfigUtil") { resolveMsfPullConfigUtil(it) }
+        locate(KEY_MSF_THREAD_MANAGER, loader, "MsfThreadManager") { resolveMsfThreadManager(it) }
+        locate(KEY_MSF_WAKEUP_LOCK_MANAGER, loader, "MSFWakeUpLockManager") { resolveMSFWakeUpLockManager(it) }
+    }
+
+    // ── Public getters ──
+
+    fun getMiniAppLauncher(loader: ClassLoader) =
+        locate(KEY_MINI_APP_LAUNCHER, loader, "MiniAppLauncher", verify = { it.hasMiniAppPreloadMethod() }) { resolveMiniAppLauncher(it) }
+
+    fun getMSFConfig(loader: ClassLoader) =
+        locate(KEY_MSF_CONFIG, loader, "MSFConfig") { resolveMSFConfig(it) }
+
+    fun getCachedBatteryMonitor(loader: ClassLoader) =
+        locate(KEY_BATTERY_MONITOR, loader, "BatteryMonitor") { resolveBatteryMonitor(it) }
+
+    fun getCachedQQBatteryMonitorCore(loader: ClassLoader) =
+        locate(KEY_QQ_BATTERY_MONITOR_CORE, loader, "QQBatteryMonitorCore") { resolveQQBatteryMonitorCore(it) }
+
+    fun getCachedGLThreadManager(loader: ClassLoader) =
+        locate(KEY_GL_THREAD_MANAGER, loader, "GLThreadManager") { resolveGLThreadManager(it) }
+
+    fun getCachedPandoraEventReportHelper(loader: ClassLoader) =
+        locate(KEY_PANDORA_EVENT_REPORT_HELPER, loader, "PandoraEventReportHelper") { resolvePandoraEventReportHelper(it) }
+
+    fun getCachedMonitorReporter(loader: ClassLoader) =
+        locate(KEY_MONITOR_REPORTER, loader, "MonitorReporter") { resolveMonitorReporter(it) }
+
+    fun getCachedBeaconReport(loader: ClassLoader) =
+        locate(KEY_BEACON_REPORT, loader, "BeaconReport") { resolveBeaconReport(it) }
+
+    fun getCachedBeaconTaskManager(loader: ClassLoader) =
+        locate(KEY_BEACON_TASK_MANAGER, loader, "BeaconTaskManager") { resolveBeaconTaskManager(it) }
+
+    fun getCachedBeaconTaskWrapper(loader: ClassLoader) =
+        locate(KEY_BEACON_TASK_WRAPPER, loader, "BeaconTaskWrapper") { resolveBeaconTaskWrapper(it) }
+
+    fun getCachedQQBeaconReport(loader: ClassLoader) =
+        locate(KEY_QQ_BEACON_REPORT, loader, "QQBeaconReport") { resolveQQBeaconReport(it) }
+
+    fun getCachedNTBeaconReport(loader: ClassLoader) =
+        locate(KEY_NT_BEACON_REPORT, loader, "NTBeaconReport") { resolveNTBeaconReport(it) }
+
+    fun getCachedTVKBeaconReport(loader: ClassLoader) =
+        locate(KEY_TVK_BEACON_REPORT, loader, "TVKBeaconReport") { resolveTVKBeaconReport(it) }
+
+    fun getCachedBaseVideoController(loader: ClassLoader) =
+        locate(KEY_BASE_VIDEO_CONTROLLER, loader, "BaseVideoController") { resolveBaseVideoController(it) }
+
+    fun getCachedLibraGifExecutor(loader: ClassLoader) =
+        locate(KEY_LIBRA_GIF_EXECUTOR, loader, "LibraGifExecutor") { resolveLibraGifExecutor(it) }
+
+    fun getCachedThemeVideoController(loader: ClassLoader) =
+        locate(KEY_THEME_VIDEO_CONTROLLER, loader, "ThemeVideoController") { resolveThemeVideoController(it) }
+
+    fun getCachedSuperThemeVideoController(loader: ClassLoader) =
+        locate(KEY_SUPER_THEME_VIDEO_CONTROLLER, loader, "SuperThemeVideoController") { resolveSuperThemeVideoController(it) }
+
+    fun getCachedMsfPullConfigUtil(loader: ClassLoader) =
+        locate(KEY_MSF_PULL_CONFIG_UTIL, loader, "MsfPullConfigUtil") { resolveMsfPullConfigUtil(it) }
+
+    fun getCachedMsfThreadManager(loader: ClassLoader) =
+        locate(KEY_MSF_THREAD_MANAGER, loader, "MsfThreadManager") { resolveMsfThreadManager(it) }
+
+    fun getCachedMSFWakeUpLockManager(loader: ClassLoader) =
+        locate(KEY_MSF_WAKEUP_LOCK_MANAGER, loader, "MSFWakeUpLockManager") { resolveMSFWakeUpLockManager(it) }
 }

@@ -16,6 +16,7 @@ import com.highcapable.yukihookapi.hook.type.android.ContextClass
 import java.lang.reflect.Method
 import java.util.Collections
 import java.util.concurrent.*
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -29,6 +30,25 @@ object NTQQHooker : YukiBaseHooker() {
     internal val activeActivities = AtomicInteger(0)
     @Volatile internal var isAppInBackground = false
     @Volatile private var hasSyncedBackgroundState = false
+
+    /** 前后台状态变更回调，由各 Hook 按需注册 */
+    private val backgroundStateCallbacks = CopyOnWriteArrayList<(Boolean) -> Unit>()
+
+    /**
+     * 注册前后台状态变更回调。
+     * 回调在状态变更时被调用，参数 true = 后台，false = 前台。
+     */
+    fun addBackgroundStateCallback(callback: (Boolean) -> Unit) {
+        backgroundStateCallbacks.add(callback)
+    }
+
+    private fun notifyBackgroundStateCallbacks(isBg: Boolean) {
+        backgroundStateCallbacks.forEach { callback ->
+            runCatching { callback(isBg) }.onFailure {
+                YLog.error("BackgroundStateCallback error: ${it.message}")
+            }
+        }
+    }
 
     // 使用 LRU 缓存存储 PendingIntent Action
     internal val pendingIntentActionMap = android.util.LruCache<Int, String>(500)
@@ -141,6 +161,7 @@ object NTQQHooker : YukiBaseHooker() {
         hasSyncedBackgroundState = true
         isAppInBackground = isBg
         YLog.info("Sync background state in $processName -> isBg=$isBg, active=${activeActivities.get()}")
+        notifyBackgroundStateCallbacks(isBg)
         if (isBg) {
             stopCoreServices()
             stopMsfServices(context)
@@ -378,9 +399,11 @@ object NTQQHooker : YukiBaseHooker() {
             val context = args[0] as? Context
             if (context != null && !isEarlyHooked) {
                 isEarlyHooked = true
-                runCatching { 
+                runCatching {
                     NTQQFeatures.init(context.classLoader)
-                    FeatureLocator.warmup(context, context.classLoader)
+                    // FeatureLocator.warmup() 不在 attachBaseContext 调用 —
+                    // DexClassFinder 需要 BaseApplicationImpl 的 SharedPreferences，
+                    // 而此时 Application 尚未创建。warmup 已在 onCreate 中调用。
                 }
                 HookDispatcher.install(
                     owner = this@NTQQHooker,

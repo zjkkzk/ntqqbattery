@@ -11,6 +11,7 @@ object ConfigData {
 
     private const val SHARED_PREFS_NAME = "ntqqbattery_config"
     private const val RUNTIME_PREFS_NAME = "ntqqbattery_runtime"
+    private const val HIDE_DESKTOP_ICON = "hide_desktop_icon"
     const val FEATURE_CACHE_VERSION = "feature_cache_version"
 
     // Hook 状态追踪 (后缀 _status)
@@ -74,5 +75,11 @@ object ConfigData {
 
     fun setHooked(feature: FeatureDefinition, value: Boolean) {
         runtimePrefs?.edit { putBoolean(getStatusKey(feature.key), value) }
+    }
+
+    fun isDesktopIconHidden() = getBoolean(HIDE_DESKTOP_ICON, false)
+
+    fun setDesktopIconHidden(value: Boolean) {
+        putBoolean(HIDE_DESKTOP_ICON, value)
     }
 }

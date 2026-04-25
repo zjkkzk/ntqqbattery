@@ -36,6 +36,7 @@ object SplashPreloadHook : YukiBaseHooker() {
             method { name = "preloadUi"; paramCount = 1 }.hook().before { result = HashMap<String, Runnable>() }
             method { name = "loadSplashMainLayout"; emptyParam() }.hook().before { result = NTQQHooker.safeReturn(method) }
             method { name = "loadChatsListDependencies"; emptyParam() }.hook().before { result = NTQQHooker.safeReturn(method) }
+            ConfigData.setHooked(FeatureRegistry.blockSplashPreload, true)
         }
     }
 }

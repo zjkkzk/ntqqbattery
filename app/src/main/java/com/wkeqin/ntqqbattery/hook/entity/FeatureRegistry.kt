@@ -10,6 +10,9 @@ import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.BeaconReportHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.GPUResourceHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFNetworkSuppressionHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFOptimizationHook
+import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFProbeHook
+import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MSFWakeLockHook
+import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.MarsWakeLockHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.PerfMonitorHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.PowerSaveModeHook
 import com.wkeqin.ntqqbattery.hook.entity.hooks.optimization.TVKReportHook
@@ -58,6 +61,9 @@ object FeatureRegistry {
     val optimizeMsfStrategy = MSFOptimizationHook.optimizeFeature
     val aggressiveMsfOptimization = MSFOptimizationHook.aggressiveFeature
     val blockBackgroundVibrate = BackgroundVibrateHook.feature
+    val blockMsfWakeLock = MSFWakeLockHook.feature
+    val blockMsfProbe = MSFProbeHook.feature
+    val blockMarsWakeLock = MarsWakeLockHook.feature
 
     val all = listOf(
         blockSystemWakeLock,
@@ -80,6 +86,9 @@ object FeatureRegistry {
         suppressNetworkRequest,
         optimizeMsfStrategy,
         aggressiveMsfOptimization,
-        blockBackgroundVibrate
+        blockBackgroundVibrate,
+        blockMsfWakeLock,
+        blockMsfProbe,
+        blockMarsWakeLock
     )
 }

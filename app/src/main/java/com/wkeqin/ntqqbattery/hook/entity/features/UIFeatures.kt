@@ -34,7 +34,8 @@ object UIFeatures {
      * 主题视频控制器门面
      */
     val ThemeVideoControllerClass by lazy {
-        NTQQFeatures.findClassSafe("ThemeVideoController", "com.tencent.mobileqq.vas.theme.ThemeVideoController", "com.tencent.mobileqq.vas.theme", "ThemeVideoController")?.also {
+        val loader = NTQQFeatures.classLoader ?: return@lazy null
+        FeatureLocator.getCachedThemeVideoController(loader)?.also {
             YLog.info("Locate ThemeVideoControllerClass -> ${it.name}")
         }
     }
@@ -43,7 +44,8 @@ object UIFeatures {
      * 超级主题视频控制器
      */
     val SuperThemeVideoControllerClass by lazy {
-        NTQQFeatures.findClassSafe("SuperThemeVideoController", "com.tencent.mobileqq.vas.theme.video.SuperThemeVideoController", "com.tencent.mobileqq.vas.theme.video", "SuperThemeVideoController")?.also {
+        val loader = NTQQFeatures.classLoader ?: return@lazy null
+        FeatureLocator.getCachedSuperThemeVideoController(loader)?.also {
             YLog.info("Locate SuperThemeVideoControllerClass -> ${it.name}")
         }
     }
@@ -73,12 +75,7 @@ object UIFeatures {
      */
     val BaseVideoControllerClass by lazy {
         val loader = NTQQFeatures.classLoader ?: return@lazy null
-        // 1. 尝试硬编码（如果当前版本名没变）
-        "com.tencent.mobileqq.vas.theme.video.a".toClassOrNull(loader) ?: loader.searchClass(name = "NTQQ_Features_BaseVideoController") {
-            // 2. 特征：在指定包下，同时实现指定的两个接口
-            fullName { it.startsWith("com.tencent.mobileqq.vas.theme.video.") }
-            implements("com.tencent.mobileqq.vas.theme.api.IThemeVideoController", "mqq.app.QActivityLifecycleCallbacks")
-        }.get()?.also {
+        FeatureLocator.getCachedBaseVideoController(loader)?.also {
             YLog.info("Locate BaseVideoControllerClass -> ${it.name}")
         }
     }
@@ -88,10 +85,7 @@ object UIFeatures {
      */
     val LibraGifExecutorClass by lazy {
         val loader = NTQQFeatures.classLoader ?: return@lazy null
-        "com.tencent.libra.extension.gif.c".toClassOrNull(loader) ?: loader.searchClass(name = "NTQQ_Features_LibraGifExecutor") {
-            extends("com.tencent.thread.monitor.plugin.proxy.BaseScheduledThreadPoolExecutor")
-            fullName { it.startsWith("com.tencent.libra.extension.gif.") }
-        }.get()?.also {
+        FeatureLocator.getCachedLibraGifExecutor(loader)?.also {
             YLog.info("Locate LibraGifExecutorClass -> ${it.name}")
         }
     }

@@ -23,6 +23,7 @@ object FrameworkSchedulerHook : YukiBaseHooker() {
     override fun onHook() {
         if (ConfigData.isEnabled(FeatureRegistry.aggressiveMsfOptimization).not()) return
 
+        // Phase 1: Block QQ alarms in background (existing behavior)
         val allAlarmMethods = listOf("set", "setExact", "setAndAllowWhileIdle", "setExactAndAllowWhileIdle", "setWindow", "setRepeating", "setInexactRepeating", "setAlarmClock")
         AlarmManager::class.java.method {
             name { it in allAlarmMethods }
@@ -33,6 +34,27 @@ object FrameworkSchedulerHook : YukiBaseHooker() {
                 YLog.debug("Blocked app-process AlarmManager.${method.name} (Tag/Action: ${operation?.creatorPackage})")
                 result = null
                 ConfigData.setHooked(FeatureRegistry.blockSystemWakeLock, true)
+            }
+        }
+
+        // Phase 2: Downgrade setExactAndAllowWhileIdle to inexact for all QQ alarms
+        // Precise alarms bypass Doze and waste scheduling resources.
+        // set() on API 19+ is automatically batched to inexact by the system.
+        AlarmManager::class.java.method {
+            name = "setExactAndAllowWhileIdle"
+        }.hookAll().before {
+            val operation = args.firstOrNull { it is PendingIntent } as? PendingIntent
+            if (operation != null && operation.creatorPackage == "com.tencent.mobileqq") {
+                val triggerAtMillis = args.firstOrNull { it is Long } as? Long ?: return@before
+                val pendingIntent = operation
+                runCatching {
+                    val am = instance as? AlarmManager ?: return@runCatching
+                    // set() is inexact on API 19+, system batches it with other alarms
+                    am.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                    YLog.debug("Downgraded setExactAndAllowWhileIdle to inexact for QQ alarm")
+                }
+                result = null // Block the original exact alarm
+                ConfigData.setHooked(FeatureRegistry.aggressiveMsfOptimization, true)
             }
         }
 
