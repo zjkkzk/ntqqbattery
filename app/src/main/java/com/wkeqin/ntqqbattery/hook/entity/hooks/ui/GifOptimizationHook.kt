@@ -17,15 +17,9 @@ import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 object GifOptimizationHook : YukiBaseHooker() {
     private val gifBombCache = Collections.synchronizedMap(WeakHashMap<Any, Boolean>())
-
-    /** Tracked GIF executor instances for dynamic pool size adjustment */
-    private val trackedExecutors = Collections.newSetFromMap(WeakHashMap<ScheduledThreadPoolExecutor, Boolean>())
-    /** 0 = not yet captured, positive = original pool size */
-    private val lastKnownCorePoolSize = AtomicInteger(0)
 
     val feature = FeatureDefinition(
         key = "block_gif_optimization",
@@ -45,7 +39,6 @@ object GifOptimizationHook : YukiBaseHooker() {
         if (!ConfigData.isEnabled(FeatureRegistry.blockGifOptimization)) return
         hookGifExecutor()
         hookGifRuntimeControl()
-        registerBackgroundStateListener()
     }
 
     private fun hookGifExecutor() {
@@ -57,38 +50,14 @@ object GifOptimizationHook : YukiBaseHooker() {
         val instance = hookParam.instance
         runCatching {
             val executor = instance as? ScheduledThreadPoolExecutor ?: return@runCatching
-            // Save original core pool size (only the first one wins)
-            lastKnownCorePoolSize.compareAndSet(0, executor.corePoolSize)
             executor.setRemoveOnCancelPolicy(true)
             executor.setKeepAliveTime(10, TimeUnit.SECONDS)
             executor.allowCoreThreadTimeOut(true)
-            // In background, limit core pool size to 1
-            if (NTQQHooker.isBackground()) {
-                executor.corePoolSize = 1
-            }
-            trackedExecutors.add(executor)
-            YLog.info("Optimized GifExecutor: ${executor::class.java.name} -> removeOnCancelPolicy=true, allowCoreThreadTimeOut=true, corePoolSize=${executor.corePoolSize}")
+            // 始终限制为单线程，GIF 渲染本身很快，串行处理完全够用
+            executor.corePoolSize = 1
+            YLog.info("Optimized GifExecutor: ${executor::class.java.name} -> corePoolSize=1, allowCoreThreadTimeOut=true")
         }.onFailure {
             YLog.error("Failed to optimize GifExecutor: ${it.message}")
-        }
-    }
-
-    /**
-     * 注册 NTQQHooker 的前后台状态回调，动态调整 GIF 线程池。
-     * 后台：corePoolSize = 1（单线程处理残余 GIF 工作）
-     * 前台：恢复原始 corePoolSize
-     */
-    private fun registerBackgroundStateListener() {
-        NTQQHooker.addBackgroundStateCallback { isBg ->
-            val targetSize = if (isBg) 1 else (lastKnownCorePoolSize.get().takeIf { it > 0 } ?: 2)
-            trackedExecutors.forEach { executor ->
-                runCatching {
-                    if (executor.corePoolSize != targetSize) {
-                        executor.corePoolSize = targetSize
-                        YLog.debug("GifExecutor: adjusted corePoolSize to $targetSize (background=$isBg)")
-                    }
-                }
-            }
         }
     }
 
