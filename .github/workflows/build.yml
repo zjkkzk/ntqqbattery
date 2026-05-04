@@ -60,7 +60,7 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk output/NTQQBattery-${VERSION}.apk 2>/dev/null || true
 
       - name: Upload APKs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: NTQQBattery
           path: output/*.apk
