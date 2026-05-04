@@ -24,9 +24,7 @@ object StatisticCollectorHook : YukiBaseHooker() {
             method {
                 name { it == "collectPerformance" || it == "reportActionCount" }
             }.hookAll().before {
-                if (NTQQHooker.isBackground()) {
-                    result = NTQQHooker.safeReturn(method)
-                }
+                result = NTQQHooker.safeReturn(method)
             }
         }
     }

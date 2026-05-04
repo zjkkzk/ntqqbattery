@@ -15,8 +15,8 @@ android {
         applicationId = "com.wkeqin.ntqqbattery"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.7.3"
+        versionCode = 4
+        versionName = "0.7.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

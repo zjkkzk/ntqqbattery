@@ -64,7 +64,7 @@ object GifOptimizationHook : YukiBaseHooker() {
     private fun hookGifRuntimeControl() {
         "com.tencent.libra.extension.gif.GifDrawable".toClassOrNull()?.apply {
             method { name = "start" }.hook().before {
-                if (NTQQHooker.isBackground()) {
+                if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
                     runCatching { instance?.current()?.method { name = "stop" }?.call() }
                     result = NTQQHooker.safeReturn(method)
                 }
@@ -72,7 +72,7 @@ object GifOptimizationHook : YukiBaseHooker() {
         }
         "com.tencent.component.media.gif.NewGifDrawable".toClassOrNull()?.apply {
             method { name = "start" }.hook().before {
-                if (NTQQHooker.isBackground()) {
+                if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
                     runCatching { instance?.current()?.method { name = "stop" }?.call() }
                     result = NTQQHooker.safeReturn(method)
                 }
@@ -81,8 +81,11 @@ object GifOptimizationHook : YukiBaseHooker() {
 
         "com.tencent.libra.extension.gif.RenderTask".toClassOrNull()?.apply {
             method { name = "e" }.hook().before {
-                if (NTQQHooker.isBackground()) {
-                    val drawable = runCatching { instance?.current()?.field { name = "f96954d" }?.any() }.getOrNull()
+                if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
+                    val gifClass = UIFeatures.LibraGifDrawableClass
+                    val drawable = runCatching {
+                        if (gifClass != null) instance?.current()?.field { type = gifClass }?.any() else null
+                    }.getOrNull()
                     runCatching { drawable?.current()?.method { name = "stop" }?.call() }
                     result = NTQQHooker.safeReturn(method)
                 }
@@ -90,8 +93,11 @@ object GifOptimizationHook : YukiBaseHooker() {
         }
         "com.tencent.component.media.gif.RenderTask".toClassOrNull()?.apply {
             method { name = "doWork" }.hook().before {
-                if (NTQQHooker.isBackground()) {
-                    val drawable = runCatching { instance?.current()?.field { name = "mGifDrawable" }?.any() }.getOrNull()
+                if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
+                    val gifClass = UIFeatures.ComponentNewGifDrawableClass
+                    val drawable = runCatching {
+                        if (gifClass != null) instance?.current()?.field { type = gifClass }?.any() else null
+                    }.getOrNull()
                     runCatching { drawable?.current()?.method { name = "stop" }?.call() }
                     result = NTQQHooker.safeReturn(method)
                 }
@@ -99,8 +105,11 @@ object GifOptimizationHook : YukiBaseHooker() {
         }
         "com.tencent.component.media.gif.PrepareAndRenderTask".toClassOrNull()?.apply {
             method { name = "doWork" }.hook().before {
-                if (NTQQHooker.isBackground()) {
-                    val drawable = runCatching { instance?.current()?.field { name = "mGifDrawable" }?.any() }.getOrNull()
+                if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
+                    val gifClass = UIFeatures.ComponentNewGifDrawableClass
+                    val drawable = runCatching {
+                        if (gifClass != null) instance?.current()?.field { type = gifClass }?.any() else null
+                    }.getOrNull()
                     runCatching { drawable?.current()?.method { name = "stop" }?.call() }
                     result = NTQQHooker.safeReturn(method)
                 }
@@ -110,6 +119,11 @@ object GifOptimizationHook : YukiBaseHooker() {
         UIFeatures.LibraGifInfoHandleClass?.apply {
             method { name = "w" }.hook().apply {
                 before {
+                    // 息屏/后台：阻断 native renderFrame 调用，返回大延迟暂停渲染循环
+                    if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
+                        result = 60_000L
+                        return@before
+                    }
                     val gifInstance = instance
                     val isBomb = gifBombCache[gifInstance]
                     if (isBomb == true) {
@@ -137,6 +151,11 @@ object GifOptimizationHook : YukiBaseHooker() {
         UIFeatures.ComponentGifInfoHandleClass?.apply {
             method { name { it == "renderFrame" || it == "renderFrameForGifPlay" } }.hookAll().apply {
                 before {
+                    // 息屏/后台：阻断 native renderFrame 调用
+                    if (!NTQQHooker.isScreenOn || NTQQHooker.isBackground()) {
+                        result = 60_000L
+                        return@before
+                    }
                     val gifInstance = instance
                     val isBomb = gifBombCache[gifInstance]
                     if (isBomb == true) {

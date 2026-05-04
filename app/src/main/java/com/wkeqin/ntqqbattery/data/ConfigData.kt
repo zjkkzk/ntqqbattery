@@ -2,7 +2,6 @@ package com.wkeqin.ntqqbattery.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.wkeqin.ntqqbattery.BuildConfig
 import com.wkeqin.ntqqbattery.hook.entity.FeatureDefinition
 import com.highcapable.yukihookapi.hook.factory.prefs
 import com.highcapable.yukihookapi.hook.log.YLog
@@ -10,6 +9,9 @@ import com.highcapable.yukihookapi.hook.xposed.prefs.YukiHookPrefsBridge
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
 
 object ConfigData {
 
@@ -23,7 +25,6 @@ object ConfigData {
     private fun getDegradedKey(configKey: String) = "${configKey}_degraded"
 
     private var sharedPrefs: YukiHookPrefsBridge? = null
-    private var featurePrefs: YukiHookPrefsBridge? = null
     private var sharedWritablePrefs: SharedPreferences? = null
     private var runtimePrefs: YukiHookPrefsBridge? = null
 
@@ -32,17 +33,18 @@ object ConfigData {
     private val cacheMap: MutableMap<String, String> = ConcurrentHashMap()
     @Volatile private var cacheDirty = false
     @Volatile private var batchMode = false
+    private var appContext: Context? = null
+
+    @Volatile private var initialized = false
 
     fun init(context: Context) {
-        val prefsContext = resolvePrefsContext(context)
-        // 桥接配置用于兼容模块进程读取。
-        sharedPrefs = prefsContext.prefs(name = SHARED_PREFS_NAME)
-        // 当前进程内的功能开关统一走 native，保证寄生活动与 Hook 读写同一份配置。
-        featurePrefs = prefsContext.prefs(name = SHARED_PREFS_NAME).native()
-        sharedWritablePrefs = resolveModulePrefs(prefsContext, SHARED_PREFS_NAME)
-
-        // 运行时缓存/状态只在当前进程使用，继续走 native。
-        runtimePrefs = prefsContext.prefs(name = RUNTIME_PREFS_NAME).native()
+        if (initialized) return
+        initialized = true
+        appContext = context.applicationContext
+        // config 和 runtime 统一使用 getSharedPreferences，确保在所有环境下都能正常生成文件
+        sharedPrefs = appContext!!.prefs(name = SHARED_PREFS_NAME)
+        sharedWritablePrefs = appContext!!.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
+        runtimePrefs = appContext!!.prefs(name = RUNTIME_PREFS_NAME).native()
 
         // FeatureLocator 缓存：直接读写文件，不依赖 SharedPreferences
         initFileCache(context)
@@ -94,28 +96,23 @@ object ConfigData {
         }
     }
 
-    private fun resolvePrefsContext(context: Context): Context {
-        if (context.packageName == BuildConfig.APPLICATION_ID) return context
-        return runCatching {
-            context.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY)
-        }.getOrElse { context }
-    }
-
-    private fun resolveModulePrefs(context: Context, name: String): SharedPreferences? {
-        return runCatching {
-            context.getSharedPreferences(name, Context.MODE_PRIVATE)
-        }.getOrNull()
-    }
 
     private fun getBoolean(key: String, defValue: Boolean): Boolean {
-        featurePrefs?.takeIf { it.contains(key) }?.let { return it.getBoolean(key, defValue) }
         sharedWritablePrefs?.takeIf { it.contains(key) }?.let { return it.getBoolean(key, defValue) }
         return sharedPrefs?.getBoolean(key, defValue) ?: defValue
     }
 
     private fun putBoolean(key: String, value: Boolean) {
-        featurePrefs?.edit { putBoolean(key, value) }
-        sharedWritablePrefs?.edit()?.putBoolean(key, value)?.apply()
+        val wrote = sharedWritablePrefs?.let {
+            it.edit().putBoolean(key, value).apply()
+            true
+        } ?: false
+        if (!wrote) {
+            YLog.error("ConfigData: putBoolean($key, $value) failed — sharedWritablePrefs is null")
+            Handler(Looper.getMainLooper()).post {
+                appContext?.let { ctx -> Toast.makeText(ctx, "NTQQBattery: 设置保存失败", Toast.LENGTH_SHORT).show() }
+            }
+        }
     }
 
     fun getString(key: String, defValue: String = ""): String {

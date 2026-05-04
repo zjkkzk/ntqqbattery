@@ -25,10 +25,8 @@ object QLogHook : YukiBaseHooker() {
             method { name = "setUIN_REPORTLOG_LEVEL"; param(Int::class.java) }.hook().before { args[0] = 1 }
             runCatching {
                 method { name = "initQlog" }.hookAll().before {
-                    if (NTQQHooker.isBackground()) {
-                        YLog.debug("QLog: Intercepted initialization in background")
-                        result = NTQQHooker.safeReturn(method)
-                    }
+                    YLog.debug("QLog: Intercepted initialization")
+                    result = NTQQHooker.safeReturn(method)
                 }
             }
             runCatching {

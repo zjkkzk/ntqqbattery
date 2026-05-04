@@ -29,6 +29,7 @@ object NTQQHooker : YukiBaseHooker() {
 
     internal val activeActivities = AtomicInteger(0)
     @Volatile internal var isAppInBackground = false
+    @Volatile internal var isScreenOn = true  // 独立屏幕状态，不受 isBackground 竞争影响
     @Volatile private var hasSyncedBackgroundState = false
 
     /** 前后台状态变更回调，由各 Hook 按需注册 */
@@ -131,24 +132,43 @@ object NTQQHooker : YukiBaseHooker() {
     }
 
     private fun registerStateReceiver(context: Context) {
-        if (isReceiverRegistered) return 
+        if (isReceiverRegistered) return
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                    if (intent.action == ACTION_BG_SYNC) {
+                when (intent.action) {
+                    ACTION_BG_SYNC -> {
                         if (intent.getStringExtra("sender_pkg") != context.packageName) return
                         val isBg = intent.getBooleanExtra("is_bg", true)
                         hasSyncedBackgroundState = true
                         isAppInBackground = isBg
-                    YLog.info("Received background sync in $processName, isBg=$isBg")
-                    
-                    // 让其他所有子进程（如 :MSF）也独立休眠各自的 Beacon
-                    if (processName != mainProcessName) {
-                        suspendBeaconTasks(isBg)
+                        YLog.info("Received background sync in $processName, isBg=$isBg")
+
+                        // 让其他所有子进程（如 :MSF）也独立休眠各自的 Beacon
+                        if (processName != mainProcessName) {
+                            suspendBeaconTasks(isBg)
+                        }
+                    }
+                    Intent.ACTION_SCREEN_OFF -> {
+                        // 灭屏：设置屏幕状态标志，GIF hook 依赖此标志
+                        if (processName == mainProcessName) {
+                            isScreenOn = false
+                            YLog.info("SCREEN_OFF: isScreenOn=false")
+                        }
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        // 亮屏：恢复屏幕状态标志
+                        if (processName == mainProcessName) {
+                            isScreenOn = true
+                            YLog.info("SCREEN_ON: isScreenOn=true")
+                        }
                     }
                 }
             }
         }
-        val filter = IntentFilter(ACTION_BG_SYNC)
+        val filter = IntentFilter(ACTION_BG_SYNC).apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {

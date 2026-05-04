@@ -28,10 +28,8 @@ object PandoraExHook : YukiBaseHooker() {
         PerfFeatures.PandoraEventReportHelperClass?.apply {
             tracker.tryHook("PandoraEventReportHelper.c()") {
                 method { name = "c"; emptyParam() }.hook().before {
-                    if (NTQQHooker.isBackground()) {
-                        YLog.debug("Blocked background PandoraEventReportHelper reporting cycle")
-                        result = NTQQHooker.safeReturn(method)
-                    }
+                    YLog.debug("Blocked PandoraEventReportHelper reporting cycle")
+                    result = NTQQHooker.safeReturn(method)
                 }
             }
         }
@@ -40,10 +38,8 @@ object PandoraExHook : YukiBaseHooker() {
             tracker.tryHook("MonitorReporter.sReportCheckRunnable") {
                 field { name = "sReportCheckRunnable" }.get().any()?.let { runnable ->
                     runnable.javaClass.method { name = "run"; emptyParam() }.hook().before {
-                        if (NTQQHooker.isBackground()) {
-                            YLog.debug("Blocked background MonitorReporter sReportCheckRunnable")
-                            result = NTQQHooker.safeReturn(method)
-                        }
+                        YLog.debug("Blocked MonitorReporter sReportCheckRunnable")
+                        result = NTQQHooker.safeReturn(method)
                     }
                 }
             }

@@ -111,12 +111,32 @@ object UIFeatures {
     }
 
     /**
+     * Libra GifDrawable (GIF 可绘制对象)
+     */
+    val LibraGifDrawableClass by lazy {
+        val loader = NTQQFeatures.classLoader ?: return@lazy null
+        "com.tencent.libra.extension.gif.GifDrawable".toClassOrNull(loader)?.also {
+            YLog.info("Locate LibraGifDrawableClass -> ${it.name}")
+        }
+    }
+
+    /**
      * Component GifInfoHandle (原生句柄包装器)
      */
     val ComponentGifInfoHandleClass by lazy {
         val loader = NTQQFeatures.classLoader ?: return@lazy null
         "com.tencent.component.media.gif.GifInfoHandle".toClassOrNull(loader)?.also {
             YLog.info("Locate ComponentGifInfoHandleClass -> ${it.name}")
+        }
+    }
+
+    /**
+     * Component NewGifDrawable (GIF 可绘制对象)
+     */
+    val ComponentNewGifDrawableClass by lazy {
+        val loader = NTQQFeatures.classLoader ?: return@lazy null
+        "com.tencent.component.media.gif.NewGifDrawable".toClassOrNull(loader)?.also {
+            YLog.info("Locate ComponentNewGifDrawableClass -> ${it.name}")
         }
     }
 }

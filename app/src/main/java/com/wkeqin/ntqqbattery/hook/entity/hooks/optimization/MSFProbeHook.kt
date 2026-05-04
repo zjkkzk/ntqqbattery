@@ -21,18 +21,17 @@ import com.highcapable.yukihookapi.hook.log.YLog
  * - MSF Hello: every ~7.5min (450s), sends CMD_STATUS_SVC_MSF_HELLO
  *
  * Both probes trigger alarm → WakeLock → network request → release cycle.
- * In background this is pure waste: the connection is already established,
- * and push notifications arrive via the persistent connection anyway.
  *
  * Strategy:
- * - Extend MSF Ping interval to 15min (900s) in background
- * - Extend MSF Hello interval to 30min (1800s) in background
- * - In foreground, let probes run normally (connection health matters when user is active)
+ * - Extend MSF Ping interval to 15min (900s) in both foreground and background
+ * - Extend MSF Hello interval to 30min (1800s) in both foreground and background
+ * - In background, additionally block alarm registration and probe execution entirely
  *
  * This is SAFE because:
  * - Probes don't affect message delivery (they're health checks, not keep-alive)
  * - An established TCP connection stays alive without probes
  * - If the connection drops, the push channel will detect it on next message
+ * - In foreground, the user is actively using QQ so the connection is definitely alive
  */
 object MSFProbeHook : YukiBaseHooker() {
 
@@ -50,9 +49,9 @@ object MSFProbeHook : YukiBaseHooker() {
         loadHooker(MSFProbeHook)
     }
 
-    /** Extended MSF Ping interval for background (ms) */
+    /** Extended MSF Ping interval (ms) */
     private const val BG_PING_INTERVAL_MS = 900_000L  // 15 min
-    /** Extended MSF Hello interval for background (ms) */
+    /** Extended MSF Hello interval (ms) */
     private const val BG_HELLO_INTERVAL_MS = 1_800_000L  // 30 min
 
     override fun onHook() {
@@ -81,12 +80,10 @@ object MSFProbeHook : YukiBaseHooker() {
                     name = "f"
                     emptyParam()
                 }.hook().after {
-                    if (NTQQHooker.isBackground()) {
-                        val original = result as? Long ?: return@after
-                        if (original < BG_PING_INTERVAL_MS) {
-                            result = BG_PING_INTERVAL_MS
-                            YLog.debug("MSFProbe: extended ping interval from ${original}ms to ${BG_PING_INTERVAL_MS}ms")
-                        }
+                    val original = result as? Long ?: return@after
+                    if (original < BG_PING_INTERVAL_MS) {
+                        result = BG_PING_INTERVAL_MS
+                        YLog.debug("MSFProbe: extended ping interval from ${original}ms to ${BG_PING_INTERVAL_MS}ms")
                     }
                 }
             }.onFailure {
@@ -107,12 +104,10 @@ object MSFProbeHook : YukiBaseHooker() {
                         name = "e"
                         emptyParam()
                     }.hook().before {
-                        if (NTQQHooker.isBackground()) {
-                            val current = helloIntervalField.getInt(instance)
-                            if (current < BG_HELLO_INTERVAL_MS.toInt()) {
-                                helloIntervalField.setInt(instance, BG_HELLO_INTERVAL_MS.toInt())
-                                YLog.debug("MSFProbe: extended hello interval from ${current}ms to ${BG_HELLO_INTERVAL_MS}ms")
-                            }
+                        val current = helloIntervalField.getInt(instance)
+                        if (current < BG_HELLO_INTERVAL_MS.toInt()) {
+                            helloIntervalField.setInt(instance, BG_HELLO_INTERVAL_MS.toInt())
+                            YLog.debug("MSFProbe: extended hello interval from ${current}ms to ${BG_HELLO_INTERVAL_MS}ms")
                         }
                     }
                     YLog.info("MSFProbe: found hello interval field '${helloIntervalField.name}'")
@@ -176,12 +171,10 @@ object MSFProbeHook : YukiBaseHooker() {
                     name = "e"
                     emptyParam()
                 }.hook().after {
-                    if (NTQQHooker.isBackground()) {
-                        val original = result as? Long ?: return@after
-                        if (original < BG_PING_INTERVAL_MS) {
-                            result = BG_PING_INTERVAL_MS
-                            YLog.debug("MSFProbe (legacy): extended probe interval from ${original}ms to ${BG_PING_INTERVAL_MS}ms")
-                        }
+                    val original = result as? Long ?: return@after
+                    if (original < BG_PING_INTERVAL_MS) {
+                        result = BG_PING_INTERVAL_MS
+                        YLog.debug("MSFProbe (legacy): extended probe interval from ${original}ms to ${BG_PING_INTERVAL_MS}ms")
                     }
                 }
             }.onFailure {
