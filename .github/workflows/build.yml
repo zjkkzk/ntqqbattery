@@ -43,14 +43,8 @@ jobs:
           signing.keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
       - name: Build Release APK
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: ./gradlew assembleRelease
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Rename APKs
         run: |
